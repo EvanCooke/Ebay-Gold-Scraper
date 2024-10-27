@@ -4,7 +4,7 @@ import asyncio
 import time
 
 # Function to split DataFrame into smaller chunks
-def split_dataframe(df, chunk_size=16):
+def split_dataframe(df, chunk_size=4):
     """Yield successive chunks of the DataFrame with a specified number of rows."""
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i:i + chunk_size]
@@ -13,7 +13,7 @@ def split_dataframe(df, chunk_size=16):
 async def query_chatgpt(session, prompt):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer sk-oLEhZ6go57Fc39ghERvYGnNriWQ1lBTFIVnYG3Q1JlT3BlbkFJtWSsfo2DPam1twK0C4RQ12HjXPemY1cPMC2mRrQBMA",
+        "Authorization": "Bearer sk-oLEhZ6go57Fc39ghERvYGnNriWQ1lBTFIVnYG3Q1JlT3BlbkFJtWSsfo2DPam1twK0C4RQ12HjXPemY1cPMC2mRrQBMA",
         "Content-Type": "application/json"
     }
     json_data = {
@@ -31,11 +31,13 @@ async def query_chatgpt(session, prompt):
 
 # Function to create a prompt from a DataFrame chunk
 def create_prompt(chunk):
-    chunk_string = chunk.to_csv(index=False)  # Convert DataFrame chunk to CSV string
+    # Convert DataFrame chunk to CSV string with '¬' as delimiter
+    chunk_string = chunk.to_csv(index=False, sep='¬', quotechar='"').strip()
+
     prompt = (
         f"Assess the profitability of these eBay items."
-         "The ebay items are in the following format:\n"
-         "Title,Price,Link,Description\"n"
+        "The eBay items are provided in the following format:\n"
+        "Title¬Price¬Link¬Description\n"
         "Return the result in CSV format like this:\n"
         "Title, Link, Price, Melt Value, Profit, Assessment\n"
         "The spot price of solid gold is $87.95 per gram.\n"
@@ -47,16 +49,11 @@ def create_prompt(chunk):
         - 10K = 41.7% pure
         - 14K = 58.5% pure
         - 18K = 75% pure
-        5. If the melt value is higher than the listing price, put "Good Deal" for assesment. If not, put "Not Profitable" for assesment.
+        5. If the melt value is higher than the listing price, put "Good Deal" for assessment. If not, put "Not Profitable" for assessment.
         6. If information is missing (like weight or karat), do not include it in your response.
 
-        Your answer should contain:
-        - Any other text than the required output.
-        - Any missing or unclear information.
-        - coulmn header (title link price melt value profit assessment)
-        """
-        
-        f"{chunk_string}"
+        Now, here are the eBay items:\n\n{chunk_string}
+    """
     )
     return prompt
 
