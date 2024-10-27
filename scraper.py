@@ -122,6 +122,6 @@ mask = ~items_df['Title'].str.lower().str.contains(r'\b(?:' + '|'.join(forbidden
 filtered_df = items_df[mask].reset_index(drop=True)
 
 # Save to CSV
-filtered_df.to_csv('results.csv', index=False)
+filtered_df.to_csv('search-results.csv', index=False, sep='¬')
 
 print(f"Filtered items saved to CSV. Total: {len(filtered_df)}")
