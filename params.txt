@@ -1,0 +1,24 @@
+# Define the query parameters for the search request
+params = {
+    "_from": "R40",
+    "_nkw": "gold scrap jewelry",
+    "_sacat": "0",
+    "rt": "nc",
+    "LH_RPA": "1",
+    "LH_ReturnsAccepted": 1, # Filter for sellers that accept returns
+    # 'LH_ItemCondition': ebay_filters["item_conditions"]["Used"],  # Item condition; 'New'.
+    # 'LH_PrefLoc': ebay_filters["item_locations"]["International"],
+    # '_udlo': '200',  # Minimum price.
+    # '_udhi': '400',  # Maximum price.
+    # '_dcat': ebay_filters["directories"]["No Directory"],  # Filter by directory ID; "Consumer Electronics".
+    # '_sacat': ebay_filters["categories"]["No Category"],  # Filter by category ID; "Cell Phones & Smartphones".
+    # '_sop': ebay_filters["sort_order"]["Time: newly listed"],  # Sort by "Time: newly listed"
+    # 'LH_Sold': '1',  # Only sold listings (='1').
+    # 'LH_Complete': '1',  # Only completed listings (='1').
+    # 'LH_BIN': '0',  # Only Buy It Now listings (='1').
+    # 'LH_Auction': '1',  # Only Auction Listings (='1').
+    # 'LH_BO': '0',  # Only listings that accept offers (='1').
+    # 'LH_FS': '0',  # Only Free Shipping listings (='1').
+    '_ipg': '240',  # Number of items per page (='1'), Max is 240.
+    'rt': 'nc'  # Result type; 'nc' indicates no cache to ensure the search results are fresh.    
+}
