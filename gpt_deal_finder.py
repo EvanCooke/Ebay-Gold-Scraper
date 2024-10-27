@@ -2,95 +2,208 @@ import pandas as pd
 import aiohttp
 import asyncio
 import time
+from io import StringIO
+import os
+from dotenv import load_dotenv
+import backoff
 
-# Function to split DataFrame into smaller chunks
+# Load environment variables
+load_dotenv()
+API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Gold prices per gram for different karats
+GOLD_PRICES = {
+    24: 65.37,
+    22: 59.92,
+    18: 49.03,
+    14: 38.13,
+    10: 27.24,
+}
+
+CSV_DELIMITER = '¬'
+
 def split_dataframe(df, chunk_size=4):
-    """Yield successive chunks of the DataFrame with a specified number of rows."""
-    for i in range(0, len(df), chunk_size):
-        yield df.iloc[i:i + chunk_size]
+    """Split DataFrame into chunks for processing."""
+    return [df.iloc[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
 
-# Async function to query GPT API
-async def query_chatgpt(session, prompt):
+@backoff.on_exception(
+    backoff.expo,
+    (aiohttp.ClientError, asyncio.TimeoutError),
+    max_tries=3
+)
+async def query_chatgpt(session, prompt, retry_count=0):
+    """Query ChatGPT API with exponential backoff retry."""
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
-        "Authorization": "Bearer sk-oLEhZ6go57Fc39ghERvYGnNriWQ1lBTFIVnYG3Q1JlT3BlbkFJtWSsfo2DPam1twK0C4RQ12HjXPemY1cPMC2mRrQBMA",
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
     json_data = {
         "model": "gpt-3.5-turbo",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 500  # Adjust as needed
+        "max_tokens": 500,
+        "temperature": 0.3  # Lower temperature for more consistent outputs
     }
+    
+    try:
+        async with session.post(url, headers=headers, json=json_data, timeout=30) as response:
+            if response.status == 429:  # Rate limit exceeded
+                if retry_count < 3:
+                    wait_time = (2 ** retry_count) * 5
+                    await asyncio.sleep(wait_time)
+                    return await query_chatgpt(session, prompt, retry_count + 1)
+                return None
+            
+            if response.status != 200:
+                print(f"Request failed with status {response.status}")
+                return None
+                
+            result = await response.json()
+            return result['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"Error in API request: {e}")
+        return None
 
-    async with session.post(url, headers=headers, json=json_data) as response:
-        if response.status != 200:
-            print(f"Request failed: {response.status}")
-            return None
-        result = await response.json()
-        return result['choices'][0]['message']['content']
-
-# Function to create a prompt from a DataFrame chunk
 def create_prompt(chunk):
-    # Convert DataFrame chunk to CSV string with '¬' as delimiter
-    chunk_string = chunk.to_csv(index=False, sep='¬', quotechar='"').strip()
+    """Create a detailed prompt for GPT analysis."""
+    chunk_string = chunk.to_csv(sep=CSV_DELIMITER, index=False)
+    return f"""Analyze these eBay gold items and extract karat and weight information.
+Input data (CSV with '{CSV_DELIMITER}' delimiter):
 
-    prompt = (
-        f"Assess the profitability of these eBay items."
-        "The eBay items are provided in the following format:\n"
-        "Title¬Price¬Link¬Description\n"
-        "Return the result in CSV format like this:\n"
-        "Title, Link, Price, Melt Value, Profit, Assessment\n"
-        "The spot price of solid gold is $87.95 per gram.\n"
-        """    Instructions:
-        1. Extract the karat (e.g., 10K, 14K) and weight (in grams) from the title or description.
-        2. If the item is not solid gold (e.g., if it is plated, filled, or gold-tone), do not include it in your response.
-        3. If the item is solid gold, calculate the melt value based on the following spot price: $87.95 per gram of 24K gold.
-        4. For lower-karat gold, adjust accordingly:
-        - 10K = 41.7% pure
-        - 14K = 58.5% pure
-        - 18K = 75% pure
-        5. If the melt value is higher than the listing price, put "Good Deal" for assessment. If not, put "Not Profitable" for assessment.
-        6. If information is missing (like weight or karat), do not include it in your response.
+Title{CSV_DELIMITER}Price{CSV_DELIMITER}Link{CSV_DELIMITER}Description
+{chunk_string}
 
-        Now, here are the eBay items:\n\n{chunk_string}
-    """
-    )
-    return prompt
+Return only CSV data with these exact columns, separated by '{CSV_DELIMITER}':
+Title{CSV_DELIMITER}Link{CSV_DELIMITER}Price{CSV_DELIMITER}Karat{CSV_DELIMITER}Weight
 
-# Main async function to process all chunks
+Rules:
+1. Only include items with clearly stated karat (K) and weight (grams)
+2. Exclude non-solid gold items (plated, filled, tone)
+3. Exclude non-meltable items (molds, testing kits)
+4. Extract exact numbers only
+5. Return pure CSV format with no additional text
+
+Example output:
+14K Gold Ring{CSV_DELIMITER}https://example.com{CSV_DELIMITER}$199.99{CSV_DELIMITER}14K{CSV_DELIMITER}4.5"""
+
 async def process_chunks(chunks):
+    """Process chunks with rate limiting."""
     async with aiohttp.ClientSession() as session:
-        tasks = []  # List to store all query tasks
+        tasks = []
         for i, chunk in enumerate(chunks):
             prompt = create_prompt(chunk)
-            print(f"Submitting query for chunk {i + 1}/{len(chunks)}...")
+            print(f"Processing chunk {i + 1}/{len(chunks)}...")
+            # Add delay between chunks to avoid rate limits
+            if i > 0:
+                await asyncio.sleep(1)
             task = asyncio.ensure_future(query_chatgpt(session, prompt))
             tasks.append(task)
+        return await asyncio.gather(*tasks)
 
-        # Wait for all tasks to complete
-        responses = await asyncio.gather(*tasks)
-        return responses
+def parse_csv_response(response_text):
+    """Parse GPT response into DataFrame with error handling."""
+    if not response_text or not isinstance(response_text, str):
+        return None
+    
+    try:
+        # Clean response and parse CSV
+        cleaned_text = response_text.strip()
+        df = pd.read_csv(
+            StringIO(cleaned_text),
+            sep=CSV_DELIMITER,
+            header=None,
+            names=['Title', 'Link', 'Price', 'Karat', 'Weight'],
+            skip_blank_lines=True
+        )
+        
+        # Clean and validate data
+        df['Price'] = df['Price'].str.extract(r'(\d+\.?\d*)').astype(float)
+        df['Karat'] = df['Karat'].str.extract(r'(\d+)').astype(int)
+        df['Weight'] = df['Weight'].astype(float)
+        
+        return df[df['Karat'].notna() & df['Weight'].notna()]
+    except Exception as e:
+        print(f"Error parsing response: {e}")
+        return None
 
-# Load the CSV data
-df = pd.read_csv('results.csv')
+def calculate_melt_value(row):
+    """Calculate melt value with validation."""
+    try:
+        karat = int(row['Karat'])
+        weight = float(row['Weight'])
+        
+        if karat in GOLD_PRICES and weight > 0:
+            return GOLD_PRICES[karat] * weight
+        return 0
+    except (ValueError, TypeError):
+        return 0
 
-# Split the DataFrame into chunks of 10 entries each
-chunks = list(split_dataframe(df, chunk_size=10))
+def analyze_results(df):
+    """Generate analysis summary."""
+    profitable_items = len(df[df['Profit'] > 0])
+    total_potential_profit = df[df['Profit'] > 0]['Profit'].sum()
+    
+    return {
+        'total_items': len(df),
+        'profitable_items': profitable_items,
+        'total_profit': total_potential_profit,
+        'avg_profit_margin': (df[df['Profit'] > 0]['Profit'] / df[df['Profit'] > 0]['Price']).mean() * 100
+    }
 
-# Run the async event loop to process the chunks
-start_time = time.time()
-responses = asyncio.run(process_chunks(chunks))
-end_time = time.time()
+async def main():
+    try:
+        # Load input data
+        print("Loading data...")
+        df = pd.read_csv('search-results.csv', sep=CSV_DELIMITER, engine='python')
+        
+        # Process in chunks
+        chunks = split_dataframe(df, chunk_size=5)
+        print(f"Processing {len(chunks)} chunks...")
+        
+        start_time = time.time()
+        responses = await process_chunks(chunks)
+        
+        # Combine and process results
+        all_data = []
+        for response in responses:
+            if response:
+                parsed_df = parse_csv_response(response)
+                if parsed_df is not None and not parsed_df.empty:
+                    all_data.append(parsed_df)
+        
+        if not all_data:
+            print("No valid data processed")
+            return
+        
+        # Create final analysis
+        final_df = pd.concat(all_data, ignore_index=True)
+        final_df['Melt_Value'] = final_df.apply(calculate_melt_value, axis=1)
+        final_df['Profit'] = final_df['Melt_Value'] - final_df['Price']
+        final_df['Assessment'] = final_df['Profit'].apply(
+            lambda x: 'Profitable' if x > 0 else 'Not Profitable'
+        )
+        
+        # Round numerical columns
+        for col in ['Price', 'Melt_Value', 'Profit']:
+            final_df[col] = final_df[col].round(2)
+        
+        # Save results
+        output_file = 'gold_analysis_results.csv'
+        final_df.to_csv(output_file, sep=CSV_DELIMITER, index=False)
+        
+        # Print analysis
+        analysis = analyze_results(final_df)
+        print("\nAnalysis Complete!")
+        print(f"Total items analyzed: {analysis['total_items']}")
+        print(f"Profitable items found: {analysis['profitable_items']}")
+        print(f"Total potential profit: ${analysis['total_profit']:.2f}")
+        print(f"Average profit margin: {analysis['avg_profit_margin']:.1f}%")
+        print(f"Results saved to: {output_file}")
+        
+        print(f"\nProcessing time: {time.time() - start_time:.2f} seconds")
+        
+    except Exception as e:
+        print(f"Error in main process: {e}")
 
-# Filter out None responses (in case of failed requests)
-valid_responses = [resp for resp in responses if resp]
-
-# Combine all responses into a single CSV-compatible string
-final_csv_content = "\n".join(valid_responses)
-
-# Save the final output to a CSV file
-with open('profitable_items.csv', 'w') as f:
-    f.write(final_csv_content)
-
-print(f"All assessments saved to 'profitable_items.csv'.")
-print(f"Time taken: {end_time - start_time:.2f} seconds")
+if __name__ == "__main__":
+    asyncio.run(main())
