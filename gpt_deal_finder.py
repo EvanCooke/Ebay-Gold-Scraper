@@ -4,7 +4,7 @@ import asyncio
 import time
 
 # Function to split DataFrame into smaller chunks
-def split_dataframe(df, chunk_size=6):
+def split_dataframe(df, chunk_size=16):
     """Yield successive chunks of the DataFrame with a specified number of rows."""
     for i in range(0, len(df), chunk_size):
         yield df.iloc[i:i + chunk_size]
