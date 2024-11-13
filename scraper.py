@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import random
+import re
 
 # Define headers to mimic a browser
 headers = {
@@ -18,14 +19,12 @@ url = "https://www.ebay.com/sch/i.html"
 
 # Define the query parameters for the search request
 params = {
-    "_from": "R40", # Filter for US sellers
-    "_nkw": "gold scrap jewelry", # Search query
-    "_sacat": "0", # No category
+    "_from": "R40",  # Filter for US sellers
+    "_nkw": "gold scrap jewelry",  # Search query
+    "_sacat": "0",  # No category
     "_ipg": "240",  # Max items per page
-    'rt': 'nc', # No auctions
-    "LH_ReturnsAccepted": 1, # Filter for sellers that accept returns
-    "LH_RPA": "1",  # Filter for items with free returns
-    # "LH_Authenticity": "1",  # Adding authenticity guarantee filter
+    "LH_ReturnsAccepted": 1,  # Filter for sellers that accept returns
+    "LH_RPA": "1"  # Filter for items with free returns
 }
 
 # Create a function to get item description from the item page
@@ -40,68 +39,87 @@ def get_item_description(item_url):
         return "Description not available"
 
 # Initialize variables
-page_number = 0
 items_list = []
 item_counter = 0  # To track the current item number
-page_item_counter = 0
 
-# Loop over pages
-while True:
-    page_number += 1
-    print(f'\nScraping page: {page_number}')
-
-    params['_pgn'] = page_number
-
-    # Send the request to the search results page with headers
+try:
+    # Initial request to get total items available
     response = requests.get(url, headers=headers, params=params)
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Find the next button
-    next_button = soup.find('button', class_='pagination__next', type='next')
-    if next_button and next_button.get('aria-disabled') == 'true':
-        print('No more pages to scrape')
-        break
-
-    # Extract items
-    items = soup.find_all('div', class_='s-item__wrapper clearfix')
-    total_items_on_page = len(items[2:])  # Exclude irrelevant first items
-
-    for item in items[2:]:
-        try:
-            title = item.find('div', class_='s-item__title').text
-            price = item.find('span', class_='s-item__price').text
-            link = item.find('a', class_='s-item__link')['href'].split('?')[0]
-            image_url = item.find('div', class_='s-item__image-wrapper image-treatment').find('img').get('src', 'No image URL')
-
-            # Fetch description from item page
-            description = get_item_description(link)
-
-            # Increment the item counter
-            item_counter += 1
-            page_item_counter += 1
-
-            # Display the current progress on the same line
-            print(f"\rProcessing item: {item_counter} (Page item: {page_item_counter} / {total_items_on_page})", end='', flush=True)
-
-            # Store item data
-            item_dict = {
-                'Title': title,
-                'Price': price,
-                'Link': link,
-                'Image Link': image_url,
-                'Description': description
-            }
-            items_list.append(item_dict)
-
-            # Add a random delay to avoid detection
-            time.sleep(random.uniform(1, 3))
-            if page_item_counter == 10:
-                page_item_counter = 0
-                break
-        except Exception as e:
-            print(f"\nError extracting item: {e}")
-
+    # Extract total number of items from the search results
+    total_items_text = soup.find('h1', class_='srp-controls__count-heading').get_text(strip=True)
     
+    # Use regex to find the number of total items
+    total_items_match = re.search(r'(\d+)', total_items_text)
+    if total_items_match:
+        total_items = int(total_items_match.group(1))  # Get the first matched group as an integer
+        print(f"Total items found for '{params['_nkw']}': {total_items}")
+    else:
+        print("Could not find total items count.")
+        total_items = 0  # Default to 0 if not found
+
+    # Loop over pages
+    page_number = 0
+    while True:
+        page_number += 1
+        item_counter = 0  # Reset the item counter for each page
+        item_counter_total = 0  # Track the total items processed
+        print(f'\nScraping page: {page_number}')
+
+        params['_pgn'] = page_number
+
+        # Send the request to the search results page with headers
+        response = requests.get(url, headers=headers, params=params)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find the next button
+        next_button = soup.find('button', class_='pagination__next', type='next')
+        if next_button and next_button.get('aria-disabled') == 'true':
+            print('No more pages to scrape')
+            break
+
+        # Extract items
+        items = soup.find_all('div', class_='s-item__wrapper clearfix')
+        total_items_on_page = len(items[2:])  # Exclude irrelevant first items
+
+        for item in items[2:]:
+            try:
+                title = item.find('div', class_='s-item__title').text
+                price = item.find('span', class_='s-item__price').text
+                link = item.find('a', class_='s-item__link')['href'].split('?')[0]
+                image_url = item.find('div', class_='s-item__image-wrapper image-treatment').find('img').get('src', 'No image URL')
+
+                # Fetch description from item page
+                description = get_item_description(link)
+
+                # Increment the item counter
+                item_counter += 1
+
+                # Display the current progress on the same line
+                print(f"\rProcessing item: {item_counter} (Page item: {item_counter_total} / {total_items_on_page})", end='', flush=True)
+
+                # Store item data
+                item_dict = {
+                    'Title': title,
+                    'Price': price,
+                    'Link': link,
+                    'Image Link': image_url,
+                    'Description': description
+                }
+                items_list.append(item_dict)
+
+                # Add a random delay to avoid detection
+                time.sleep(random.uniform(1, 3))
+
+                # if item_counter == 10:
+                #     break
+
+            except Exception as e:
+                print(f"\nError extracting item: {e}")
+
+except KeyboardInterrupt:
+    print("\nScraping interrupted by user.")
 
 print(f"\nTotal items scraped: {len(items_list)}")
 
@@ -114,7 +132,7 @@ items_df = items_df.drop('Image Link', axis=1)
 # Define forbidden terms and filter results
 forbidden_terms = [
     'gold filled',
-    'gold plated', 
+    'gold plated',
     'gold tone'
 ]
 
