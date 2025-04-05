@@ -24,7 +24,8 @@ params = {
     "_sacat": "0",  # No category
     "_ipg": "240",  # Max items per page
     "LH_ReturnsAccepted": 1,  # Filter for sellers that accept returns
-    "LH_RPA": "1"  # Filter for items with free returns
+    "LH_RPA": "1",  # Filter for items with free returns
+    "LH_BIN": "1" # Filter for Buy It Now (non-auction) items only
 }
 
 # Create a function to get item description from the item page
@@ -140,6 +141,6 @@ mask = ~items_df['Title'].str.lower().str.contains(r'\b(?:' + '|'.join(forbidden
 filtered_df = items_df[mask].reset_index(drop=True)
 
 # Save to CSV
-filtered_df.to_csv('search-results.csv', index=False, sep='¬')
+filtered_df.to_csv('search-results.csv', index=False, sep='¬|')
 
 print(f"Filtered items saved to CSV. Total: {len(filtered_df)}")

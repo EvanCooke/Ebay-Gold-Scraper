@@ -20,7 +20,7 @@ GOLD_PRICES = {
     10: 27.24,
 }
 
-CSV_DELIMITER = '¬'
+CSV_DELIMITER = '¬|'
 
 def split_dataframe(df, chunk_size=4):
     """Split DataFrame into chunks for processing."""
