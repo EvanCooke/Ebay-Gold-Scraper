@@ -15,7 +15,7 @@ TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token" # sandbox or
 SEARCH_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search' # Sandbox
 ITEM_DETAILS_BASE_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item/' # Sandbox
 
-SEARCH_KEYWORDS = '"gold jewlery" | "scrap gold" | "gold estate" | electronics | item'
+SEARCH_KEYWORDS = 'gold'
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20
@@ -52,7 +52,7 @@ def get_access_token(client_id, client_secret, target_endpoint):
                 'grant_type': 'client_credentials',
                 # Define the scope(s) your application needs. Check eBay documentation.
                 # Example scope for buying APIs
-                'scope': 'https://api.ebay.com/oauth/api_scope'
+                'scope': 'https://api.ebay.com/oauth/api_scope	'
                 # For different APIs or scopes, adjust this value.
                 # Example: 'scope': 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.marketing.readonly'
         }
@@ -119,11 +119,16 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
             params['filter'] = f"returnsAccepted:[{str(returns_accepted).lower()}]"
         print(f"  Filtering for returns accepted: {returns_accepted}")
 
+    # print the full URL being requested for debugging purposes
+    full_url_with_params = requests.Request('GET', SEARCH_API_URL, headers=headers, params=params).prepare().url
+    print(f"Request URL: {full_url_with_params}") # Print the full URL
+
     
     try:
         response = requests.get(SEARCH_API_URL, headers=headers, params=params, timeout=20)
         response.raise_for_status()
         listings_data = response.json()
+        print("listings data: ", listings_data)
         total_listings = listings_data.get('total', 0)
         item_summaries = listings_data.get('itemSummaries', [])
         print(f"Search successful! Found {total_listings} potential listings (returning {len(item_summaries)} on this page).")
@@ -140,7 +145,7 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
         return None, 0
 
 # --- Function to Get Item Details ---
-def get_item_details(access_token, item_id, marketplace_id):
+def get_item_details(access_token, item_id, marketplace_id, max_retries=3, retry_delay=1):
     """
     Retrieves detailed information for a specific item using the /item/{item_id} endpoint.
     See: https://developer.ebay.com/api-docs/buy/browse/resources/item/methods/getItem
@@ -150,38 +155,55 @@ def get_item_details(access_token, item_id, marketplace_id):
         print("Access token and item ID are required to fetch details.")
         return None
 
-    details_url = f"{ITEM_DETAILS_BASE_URL}{item_id}"
+    details_url = f"{ITEM_DETAILS_BASE_URL}{item_id}" # Use the item_id directly
+
     headers = {
         'Authorization': f'Bearer {access_token}',
         'X-EBAY-C-MARKETPLACE-ID': marketplace_id,
+        'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DUS%2Czip%3D19406', # Add the required header
         'Accept': 'application/json'
     }
     params = {
-        'fieldgroups': 'description,itemSpecifics,seller'  # Request description, specifics, and seller info
+        'fieldgroups': 'PRODUCT,ADDITIONAL_SELLER_DETAILS'
     }
 
     print(f"  Fetching details for Item ID: {item_id}...")
-    try:
-        response = requests.get(details_url, headers=headers, params=params, timeout=15)
-        response.raise_for_status()
-        item_details = response.json()
-        return item_details
-    except requests.exceptions.RequestException as e:
-        print(f"  Error fetching details for item {item_id}: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"  Response status code: {e.response.status_code}")
-            try:
-                error_details = e.response.json()
-                print(f"  Error details: {json.dumps(error_details, indent=2)}")
-            except json.JSONDecodeError:
-                print(f"  Response text: {e.response.text}")
-        return None
+
+    print(f"  Request URL: {details_url}") # Print the full URL
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(details_url, headers=headers, params=params, timeout=15)
+            response.raise_for_status()
+            item_details = response.json()
+            return item_details
+        except requests.exceptions.RequestException as e:
+            print(f"  Error fetching details for item {item_id} (Attempt {attempt + 1}/{max_retries}): {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"  Response status code: {e.response.status_code}")
+                try:
+                    error_details = e.response.json()
+                    print(f"  Error details: {json.dumps(error_details, indent=2)}")
+                    if e.response.status_code != 500: # Don't retry if it's a different client error
+                        break
+                except json.JSONDecodeError:
+                    print(f"  Response text: {e.response.text}")
+                    if e.response.status_code != 500:
+                        break
+            if attempt < max_retries - 1:
+                print(f"  Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                print(f"  Max retries reached for item {item_id}. Skipping.")
+                return None
+    return None
 
 # --- Main Execution ---
 if __name__ == "__main__":
     access_token = get_access_token(CLIENT_ID, CLIENT_SECRET, TOKEN_URL)
     if not access_token:
         exit("Failed to get access token. Exiting.")
+
 
     # --- Construct Search Filters ---
     search_filters = []
@@ -213,11 +235,19 @@ if __name__ == "__main__":
             title = summary.get('title')
             price = summary.get('price', {}).get('value')
             currency = summary.get('price', {}).get('currency')
-            seller_username = summary.get('seller', {}).get('username')
-            seller_feedback_score = summary.get('seller', {}).get('feedbackScore')
+            seller_info = summary.get('seller', {})
+            seller_username = seller_info.get('username')
+            seller_feedback_score = seller_info.get('feedbackScore')
+            feedback_percent = seller_info.get('feedbackPercentage')
+            image_url = summary.get('image', {}).get('imageUrl')
+            item_url = summary.get('itemWebUrl')
+            shipping_options = summary.get('shippingOptions')
+            top_rated = summary.get('topRatedBuyingExperience')
 
             item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
             description = item_details.get('description') if item_details else None
+            returns_accepted_flag = item_details.get('returnsAcceptedd')
+            print(f"  Returns accepted: {returns_accepted_flag}")
             item_specifics_raw = item_details.get('localizedAspects') if item_details else None
             item_specifics = {}
             if item_specifics_raw:
@@ -234,7 +264,13 @@ if __name__ == "__main__":
                 'currency': currency,
                 'seller_username': seller_username,
                 'seller_feedback_score': seller_feedback_score,
+                'feedback_percent': feedback_percent,
+                'image_url': image_url,
+                'item_url': item_url,
+                'shipping_options': json.dumps(shipping_options) if shipping_options else None,
+                'top_rated_buying_experience': top_rated,
                 'description': description,
+                'returns_accepted': returns_accepted_flag,
                 'item_specifics': json.dumps(item_specifics)  # Store as JSON string for CSV
             })
             time.sleep(0.5)  # Be mindful of rate limits
@@ -249,10 +285,16 @@ if __name__ == "__main__":
     if all_item_data:
         print(f"\nWriting {len(all_item_data)} items to {OUTPUT_CSV_FILENAME}...")
         with open(OUTPUT_CSV_FILENAME, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['item_id', 'title', 'price', 'currency', 'seller_username', 'seller_feedback_score', 'description', 'item_specifics']
+            fieldnames = ['item_id', 'title', 'price', 'currency', 'seller_username', 'seller_feedback_score', 'feedback_percent', 'image_url', 'item_url', 'shipping_options', 'top_rated_buying_experience', 'description', 'returns_accepted', 'item_specifics']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(all_item_data)
         print("Data written to CSV file.")
     else:
         print("No data fetched to write to CSV.")
+
+
+    # NEED TO PROVIDE itemSummaries.itemAffiliateWebUrl to user to get money for affiliate links
+
+    # eBay Partner Network: In order to be commissioned for your sales, you must use the URL returned 
+    # in the itemAffiliateWebUrl field to forward your buyer to the ebay.com site.
