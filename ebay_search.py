@@ -5,6 +5,8 @@ import requests # for HTTP requests
 import json # for JSON parsing
 import csv # for CSV file writing
 import time # for sleep between requests
+from urllib.parse import quote  # Import the quote function for URL encoding
+from psycopg2.extras import Json  # For handling JSON data
 
 load_dotenv() # Load environment variables from .env file
 
@@ -52,7 +54,7 @@ def get_access_token(client_id, client_secret, target_endpoint):
                 'grant_type': 'client_credentials',
                 # Define the scope(s) your application needs. Check eBay documentation.
                 # Example scope for buying APIs
-                'scope': 'https://api.ebay.com/oauth/api_scope	'
+                'scope': 'https://api.ebay.com/oauth/api_scope'
                 # For different APIs or scopes, adjust this value.
                 # Example: 'scope': 'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.marketing.readonly'
         }
@@ -123,12 +125,11 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
     full_url_with_params = requests.Request('GET', SEARCH_API_URL, headers=headers, params=params).prepare().url
     print(f"Request URL: {full_url_with_params}") # Print the full URL
 
-    
     try:
         response = requests.get(SEARCH_API_URL, headers=headers, params=params, timeout=20)
         response.raise_for_status()
-        listings_data = response.json()
-        print("listings data: ", listings_data)
+        listings_data = response.json() 
+        # print("listings data: ", listings_data)
         total_listings = listings_data.get('total', 0)
         item_summaries = listings_data.get('itemSummaries', [])
         print(f"Search successful! Found {total_listings} potential listings (returning {len(item_summaries)} on this page).")
@@ -155,13 +156,15 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=3, retry
         print("Access token and item ID are required to fetch details.")
         return None
 
-    details_url = f"{ITEM_DETAILS_BASE_URL}{item_id}" # Use the item_id directly
+    # details_url = f"{ITEM_DETAILS_BASE_URL}{item_id}" # Use the item_id directly
+    details_url = f"{ITEM_DETAILS_BASE_URL}{quote(item_id)}" # correctly encode item ID
+
 
     headers = {
         'Authorization': f'Bearer {access_token}',
         'X-EBAY-C-MARKETPLACE-ID': marketplace_id,
         'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DUS%2Czip%3D19406', # Add the required header
-        'Accept': 'application/json'
+        'Accept': 'application/json',
     }
     params = {
         'fieldgroups': 'PRODUCT,ADDITIONAL_SELLER_DETAILS'
@@ -174,9 +177,21 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=3, retry
     for attempt in range(max_retries):
         try:
             response = requests.get(details_url, headers=headers, params=params, timeout=15)
-            response.raise_for_status()
+            response.raise_for_status() # Raise an exception for HTTP errors
+
+            # Check rate limit headers
+            rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 1))  # Default to 1 if missing
+            reset_time = int(response.headers.get('X-RateLimit-Reset', 60))  # Default to 60 seconds if missing
+
+            # If rate limit is about to be exceeded, pause
+            if rate_limit_remaining == 0:
+                print(f"Rate limit reached. Waiting for {reset_time} seconds...")
+                time.sleep(reset_time)
+
+            # Parse and return item details
             item_details = response.json()
             return item_details
+
         except requests.exceptions.RequestException as e:
             print(f"  Error fetching details for item {item_id} (Attempt {attempt + 1}/{max_retries}): {e}")
             if hasattr(e, 'response') and e.response is not None:
@@ -190,6 +205,8 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=3, retry
                     print(f"  Response text: {e.response.text}")
                     if e.response.status_code != 500:
                         break
+
+            # Retry logic
             if attempt < max_retries - 1:
                 print(f"  Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
@@ -226,8 +243,9 @@ if __name__ == "__main__":
             # You can add a sort order here if needed, e.g., sort_order='PricePlusShippingLowest'
         )
 
-        if not item_summaries:
-            print("No item summaries found on this page or search failed.")
+        # Add the snippet here to exit the loop if no listings are found
+        if total_listings == 0 or not item_summaries:
+            print("No more listings found. Exiting pagination loop.")
             break
 
         for summary in item_summaries:
@@ -245,10 +263,10 @@ if __name__ == "__main__":
             top_rated = summary.get('topRatedBuyingExperience')
 
             item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
-            description = item_details.get('description') if item_details else None
-            returns_accepted_flag = item_details.get('returnsAcceptedd')
+            description = item_details.get('description', None) if item_details else None # are following if statements needed?
+            returns_accepted_flag = item_details.get('returnsAccepted', None) if item_details else None
             print(f"  Returns accepted: {returns_accepted_flag}")
-            item_specifics_raw = item_details.get('localizedAspects') if item_details else None
+            item_specifics_raw = item_details.get('localizedAspects', []) if item_details else None
             item_specifics = {}
             if item_specifics_raw:
                 for spec in item_specifics_raw:
@@ -267,13 +285,15 @@ if __name__ == "__main__":
                 'feedback_percent': feedback_percent,
                 'image_url': image_url,
                 'item_url': item_url,
-                'shipping_options': json.dumps(shipping_options) if shipping_options else None,
+                'shipping_options': Json(shipping_options) if shipping_options else None,
                 'top_rated_buying_experience': top_rated,
                 'description': description,
                 'returns_accepted': returns_accepted_flag,
-                'item_specifics': json.dumps(item_specifics)  # Store as JSON string for CSV
+                'item_specifics': Json(item_specifics)  # Store as JSON string for CSV
             })
+
             time.sleep(0.5)  # Be mindful of rate limits
+            
 
         total_fetched += len(item_summaries)
         if total_fetched >= total_listings or page_number >= MAX_PAGES:
