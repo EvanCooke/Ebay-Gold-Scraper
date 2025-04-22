@@ -104,7 +104,7 @@ def create_tables(conn):
             )
         """)
 
-        cursor.execute("COMMIT;")
+        conn.commit()
         print("Tables 'ebay_listings' and 'ai_processed_listings' created successfully.")
 
     except psycopg2.Error as e:
@@ -165,6 +165,13 @@ def insert_data(conn, table_name, data):
                 data['scrap_value'],
                 data['profit'],
                 data['scam_score'],
+                data['deal_score'],
+                # Additional values for the UPDATE clause
+                data['weight'],
+                data['purity'],
+                data['scrap_value'],
+                data['profit'],
+                data['scam_score'],
                 data['deal_score']
             ))
 
@@ -214,10 +221,10 @@ def fetch_data(conn, query, params=None, fetchone=False):
 
 if __name__ == "__main__":
     
-    create_database(DATABASE, USER, PASSWORD, HOST, PORT)
+    # create_database(DATABASE, USER, PASSWORD, HOST, PORT)
     conn = connect_to_db(DATABASE, USER, PASSWORD, HOST, PORT)
     if conn:
-        create_tables(conn)
+        # create_tables(conn)
 
         # Example data (replace with your actual data)
         ebay_data = {
@@ -247,10 +254,10 @@ if __name__ == "__main__":
             'deal_score': 2.5
         }
 
-        if insert_data(conn, "ebay_listings", ebay_data):
-            print("ebay_listings insertion was successful")
-        else:
-            print("ebay_listings insertion failed")
+        # if insert_data(conn, "ebay_listings", ebay_data):
+        #     print("ebay_listings insertion was successful")
+        # else:
+        #     print("ebay_listings insertion failed")
 
         if insert_data(conn, "ai_processed_listings", ai_data):
             print("ai_processed_listings insertion was successful")
