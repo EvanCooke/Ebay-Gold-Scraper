@@ -7,6 +7,7 @@ import csv # for CSV file writing
 import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
+from database import connect_to_db, insert_data 
 
 load_dotenv() # Load environment variables from .env file
 
@@ -25,6 +26,12 @@ FILTER_RETURNS_ACCEPTED = False  # Set to True to filter for listings that accep
 OUTPUT_CSV_FILENAME = 'ebay_gold_listings_browse_api.csv'
 CATEGORY_IDS = None # Set to None to search all categories, or specify a list of category IDs
 SELLER_FEEDBACK_MIN = 0 # Minimum feedback score for sellers (if needed)
+
+DATABASE = os.environ.get('DB_NAME')
+USER = os.environ.get('DB_USER')
+PASSWORD = os.environ.get('DB_PASSWORD')
+HOST = os.environ.get('DB_HOST')
+PORT = os.environ.get('DB_PORT')
 
 
 # --- Function to Obtain Access Token ---
@@ -146,7 +153,7 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
         return None, 0
 
 # --- Function to Get Item Details ---
-def get_item_details(access_token, item_id, marketplace_id, max_retries=3, retry_delay=1):
+def get_item_details(access_token, item_id, marketplace_id, max_retries=0, retry_delay=1):
     """
     Retrieves detailed information for a specific item using the /item/{item_id} endpoint.
     See: https://developer.ebay.com/api-docs/buy/browse/resources/item/methods/getItem
@@ -285,11 +292,11 @@ if __name__ == "__main__":
                 'feedback_percent': feedback_percent,
                 'image_url': image_url,
                 'item_url': item_url,
-                'shipping_options': Json(shipping_options) if shipping_options else None,
+                'shipping_options': shipping_options if shipping_options else None,
                 'top_rated_buying_experience': top_rated,
                 'description': description,
                 'returns_accepted': returns_accepted_flag,
-                'item_specifics': Json(item_specifics)  # Store as JSON string for CSV
+                'item_specifics': item_specifics  # Store as JSON string for CSV
             })
 
             time.sleep(0.5)  # Be mindful of rate limits
@@ -302,16 +309,37 @@ if __name__ == "__main__":
         print(f"Moving to page {page_number}...")
 
     # --- Write to CSV ---
+    # if all_item_data:
+    #     print(f"\nWriting {len(all_item_data)} items to {OUTPUT_CSV_FILENAME}...")
+    #     with open(OUTPUT_CSV_FILENAME, 'w', newline='', encoding='utf-8') as csvfile:
+    #         fieldnames = ['item_id', 'title', 'price', 'currency', 'seller_username', 'seller_feedback_score', 'feedback_percent', 'image_url', 'item_url', 'shipping_options', 'top_rated_buying_experience', 'description', 'returns_accepted', 'item_specifics']
+    #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    #         writer.writeheader()
+    #         writer.writerows(all_item_data)
+    #     print("Data written to CSV file.")
+    # else:
+    #     print("No data fetched to write to CSV.")
+
+    # Establish a connection to the database
+    conn = connect_to_db(DATABASE, USER, PASSWORD, HOST, PORT)
+    if not conn:
+        exit("Failed to connect to the database. Exiting.")
+
+    # --- Insert data into PostgreSQL database ---
     if all_item_data:
-        print(f"\nWriting {len(all_item_data)} items to {OUTPUT_CSV_FILENAME}...")
-        with open(OUTPUT_CSV_FILENAME, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['item_id', 'title', 'price', 'currency', 'seller_username', 'seller_feedback_score', 'feedback_percent', 'image_url', 'item_url', 'shipping_options', 'top_rated_buying_experience', 'description', 'returns_accepted', 'item_specifics']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(all_item_data)
-        print("Data written to CSV file.")
+        print(f"\nInserting {len(all_item_data)} items into the database...")
+        for item in all_item_data:
+            success = insert_data(conn, "ebay_listings", item)
+            if success:
+                print(f"Inserted item {item['item_id']} successfully.")
+            else:
+                print(f"Failed to insert item {item['item_id']}.")
     else:
-        print("No data fetched to write to CSV.")
+        print("No data fetched to insert into the database.")
+
+    # Close the database connection
+    conn.close()
+    print("Database connection closed.")
 
 
     # NEED TO PROVIDE itemSummaries.itemAffiliateWebUrl to user to get money for affiliate links
