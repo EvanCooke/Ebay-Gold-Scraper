@@ -1,17 +1,7 @@
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import Json  # For handling JSON data
-import os
-from dotenv import load_dotenv # for loading environment variables
-
-load_dotenv() # Load environment variables from .env file
-
-# --- Configuration ---
-DATABASE = os.environ.get('DB_NAME')
-USER = os.environ.get('DB_USER')
-PASSWORD = os.environ.get('DB_PASSWORD')
-HOST = os.environ.get('DB_HOST')
-PORT = os.environ.get('DB_PORT')
+from backend.instance.config import Config  # Import Config class
 
 
 def create_database(db_name, user, password, host="localhost", port ="5432"):
@@ -19,7 +9,10 @@ def create_database(db_name, user, password, host="localhost", port ="5432"):
     try:
         # Connect to the PostgreSQL server (not a specific database)
         conn = psycopg2.connect(
-            user=user, password=password, host=host, port=port
+            user=Config.DB_USER,
+            password=Config.DB_PASSWORD,
+            host=Config.DB_HOST,
+            port=Config.DB_PORT
         )
 
         # Set autocommit to True for CREATE DATABASE
@@ -29,12 +22,12 @@ def create_database(db_name, user, password, host="localhost", port ="5432"):
 
 
         # Check if the database exists 
-        cursor.execute(f"SELECT 1 FROM pg_database WHERE datname='{db_name}'")
+        cursor.execute(f"SELECT 1 FROM pg_database WHERE datname='{Config.DB_NAME}'")
         if not cursor.fetchone():
-            cursor.execute(f"CREATE DATABASE {db_name};")
-            print(f"Database '{db_name}' created successfully.")
+            cursor.execute(f"CREATE DATABASE {Config.DB_NAME};")
+            print(f"Database '{Config.DB_NAME}' created successfully.")
         else:
-            print(f"Database '{db_name}' already exists.")
+            print(f"Database '{Config.DB_NAME}' already exists.")
 
         conn.close()
 
@@ -48,13 +41,13 @@ def connect_to_db(db_name, user, password, host="localhost", port="5432"):
     """Connects to a PostgreSQL database and returns the connection object."""
     try:
         conn = psycopg2.connect(
-            database=db_name,
-            user=user,
-            password=password,
-            host=host,
-            port=port
+            database=Config.DB_NAME,
+            user=Config.DB_USER,
+            password=Config.DB_PASSWORD,
+            host=Config.DB_HOST,
+            port=Config.DB_PORT
         )
-        print(f"Connected to database '{db_name}' successfully.")
+        print(f"Connected to database '{Config.DB_NAME}' successfully.")
         return conn
     except psycopg2.Error as e:
         print(f"Error connecting to database: {e}")
