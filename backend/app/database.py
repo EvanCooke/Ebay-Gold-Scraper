@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import Json  # For handling JSON data
-from backend.instance.config import Config  # Import Config class
+from instance.config import Config  # Import Config class
 
 
 def create_database(db_name, user, password, host="localhost", port ="5432"):
