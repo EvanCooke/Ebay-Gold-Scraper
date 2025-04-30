@@ -1,6 +1,6 @@
 from flask import Flask
 from backend.app.routes import notifications_bp, frontend_bp
-from config import Config
+import Config
 
 def create_app():
     app = Flask(__name__)
