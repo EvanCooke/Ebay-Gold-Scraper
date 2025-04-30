@@ -8,7 +8,7 @@ import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
 from backend.app.database import connect_to_db, insert_data 
-from instance.config import Config  # Import Config class
+from backend.instance.config import Config  # Import Config class
 
 
 load_dotenv() # Load environment variables from .env file
