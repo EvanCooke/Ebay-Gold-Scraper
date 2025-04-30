@@ -7,6 +7,7 @@ frontend_bp = Blueprint('frontend', __name__)
 
 # eBay API credentials and endpoint
 # These should be stored securely and not hardcoded in production
+# https://developer.ebay.com/marketplace-account-deletion
 VERIFICATION_TOKEN = "your_verification_token_here"
 ENDPOINT_URL = "https://yourdomain.com/ebay/notifications"
 
