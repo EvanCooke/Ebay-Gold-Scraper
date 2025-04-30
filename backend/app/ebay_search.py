@@ -8,14 +8,13 @@ import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
 from backend.app.database import connect_to_db, insert_data 
-from backend.instance.config import Config  # Import Config class
 
 
 load_dotenv() # Load environment variables from .env file
 
 # --- Configuration ---
-CLIENT_ID = Config.CLIENT_ID
-CLIENT_SECRET = Config.CLIENT_SECRET
+CLIENT_ID = os.environ.get('CLIENT_ID')
+CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
 TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token" # sandbox or production
 SEARCH_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search' # Sandbox
 ITEM_DETAILS_BASE_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item/' # Sandbox
@@ -29,11 +28,12 @@ OUTPUT_CSV_FILENAME = 'ebay_gold_listings_browse_api.csv'
 CATEGORY_IDS = None # Set to None to search all categories, or specify a list of category IDs
 SELLER_FEEDBACK_MIN = 0 # Minimum feedback score for sellers (if needed)
 
-DATABASE = Config.DB_NAME
-USER = Config.DB_USER
-PASSWORD = Config.DB_PASSWORD
-HOST = Config.DB_HOST
-PORT = Config.DB_PORT
+
+DATABASE = os.environ.get('DB_NAME')
+USER = os.environ.get('DB_USER')
+PASSWORD = os.environ.get('DB_PASSWORD')
+HOST = os.environ.get('DB_HOST')
+PORT = os.environ.get('DB_PORT')
 
 
 # --- Function to Obtain Access Token ---

@@ -1,18 +1,27 @@
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import Json  # For handling JSON data
-from backend.instance.config import Config  # Import Config class
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-def create_database(db_name, user, password, host="localhost", port ="5432"):
+# Declare environment variables at the top
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "localhost")  # Default to localhost if not set
+DB_PORT = os.getenv("DB_PORT", "5432")  # Default to 5432 if not set
+
+def create_database():
     """Create a new PostgreSQL database"""
     try:
         # Connect to the PostgreSQL server (not a specific database)
         conn = psycopg2.connect(
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            host=Config.DB_HOST,
-            port=Config.DB_PORT
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
         )
 
         # Set autocommit to True for CREATE DATABASE
@@ -20,14 +29,13 @@ def create_database(db_name, user, password, host="localhost", port ="5432"):
         conn.autocommit = True  # Simplified autocommit
         cursor = conn.cursor()
 
-
         # Check if the database exists 
-        cursor.execute(f"SELECT 1 FROM pg_database WHERE datname='{Config.DB_NAME}'")
+        cursor.execute(f"SELECT 1 FROM pg_database WHERE datname='{DB_NAME}'")
         if not cursor.fetchone():
-            cursor.execute(f"CREATE DATABASE {Config.DB_NAME};")
-            print(f"Database '{Config.DB_NAME}' created successfully.")
+            cursor.execute(f"CREATE DATABASE {DB_NAME};")
+            print(f"Database '{DB_NAME}' created successfully.")
         else:
-            print(f"Database '{Config.DB_NAME}' already exists.")
+            print(f"Database '{DB_NAME}' already exists.")
 
         conn.close()
 
@@ -36,18 +44,17 @@ def create_database(db_name, user, password, host="localhost", port ="5432"):
         if conn:
            conn.close()
 
-
-def connect_to_db(db_name, user, password, host="localhost", port="5432"):
+def connect_to_db():
     """Connects to a PostgreSQL database and returns the connection object."""
     try:
         conn = psycopg2.connect(
-            database=Config.DB_NAME,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            host=Config.DB_HOST,
-            port=Config.DB_PORT
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
         )
-        print(f"Connected to database '{Config.DB_NAME}' successfully.")
+        print(f"Connected to database '{DB_NAME}' successfully.")
         return conn
     except psycopg2.Error as e:
         print(f"Error connecting to database: {e}")
@@ -213,9 +220,7 @@ def fetch_data(conn, query, params=None, fetchone=False):
 
 
 if __name__ == "__main__":
-    
-    # create_database(DATABASE, USER, PASSWORD, HOST, PORT)
-    conn = connect_to_db(Config.DATABASE, Config.USER, Config.PASSWORD, Config.HOST, Config.PORT)
+    conn = connect_to_db()
     if conn:
         # create_tables(conn)
 
@@ -247,16 +252,15 @@ if __name__ == "__main__":
             'deal_score': 2.5
         }
 
-        # if insert_data(conn, "ebay_listings", ebay_data):
-        #     print("ebay_listings insertion was successful")
-        # else:
-        #     print("ebay_listings insertion failed")
+        if insert_data(conn, "ebay_listings", ebay_data):
+            print("ebay_listings insertion was successful")
+        else:
+            print("ebay_listings insertion failed")
 
         if insert_data(conn, "ai_processed_listings", ai_data):
             print("ai_processed_listings insertion was successful")
         else:
             print("ai_processed_listings insertion failed")
-
 
         # Example: Fetch all data from ebay_listings
         query = "SELECT * FROM ebay_listings;"
