@@ -30,7 +30,7 @@ def ebay_notifications():
             }
             return jsonify(response), 200
         
-        return jsonify({"error": "No challenge_code provided"}), 400
+        #return jsonify({"error": "No challenge_code provided"}), 400
 
     elif request.method == 'POST':
         # Handle actual notifications
