@@ -1,2 +1,8 @@
-Flask
-python-dotenv
+Flask==2.3.3  # Flask web framework for your backend
+python-dotenv==1.0.0  # For loading environment variables from .env
+psycopg2-binary==2.9.8  # PostgreSQL database connection
+requests==2.31.0  # For making HTTP requests (e.g., eBay API)
+beautifulsoup4==4.12.2  # For web scraping
+pandas==2.1.1  # For data manipulation and CSV handling
+# aiohttp==3.8.5  # For asynchronous HTTP requests (used in gpt_deal_finder.py)
+backoff==2.2.1  # For retrying failed API requests with exponential backoff

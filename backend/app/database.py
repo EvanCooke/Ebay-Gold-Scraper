@@ -215,7 +215,7 @@ def fetch_data(conn, query, params=None, fetchone=False):
 if __name__ == "__main__":
     
     # create_database(DATABASE, USER, PASSWORD, HOST, PORT)
-    conn = connect_to_db(DATABASE, USER, PASSWORD, HOST, PORT)
+    conn = connect_to_db(Config.DATABASE, Config.USER, Config.PASSWORD, Config.HOST, Config.PORT)
     if conn:
         # create_tables(conn)
 

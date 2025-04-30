@@ -1,9 +1,12 @@
 import hashlib
 from flask import Blueprint, request, jsonify
 
+# I dont know what blueprints do or why we separate them
 notifications_bp = Blueprint('notifications', __name__)
+frontend_bp = Blueprint('frontend', __name__)
 
-# Set these yourself
+# eBay API credentials and endpoint
+# These should be stored securely and not hardcoded in production
 VERIFICATION_TOKEN = "your_verification_token_here"
 ENDPOINT_URL = "https://yourdomain.com/ebay/notifications"
 
@@ -33,3 +36,15 @@ def ebay_notifications():
         except Exception as e:
             print("Error processing notification:", str(e))
             return jsonify({"error": "Failed to process notification"}), 500
+        
+
+# Add a root route for the homepage
+@frontend_bp.route('/')
+def home():
+    return """
+    <h1>Welcome to the eBay Gold Scraper API!</h1>
+    <p>Use the following endpoints:</p>
+    <ul>
+        <li><a href="/ebay/notifications">/ebay/notifications</a> - eBay notifications endpoint</li>
+    </ul>
+    """
