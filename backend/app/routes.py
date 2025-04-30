@@ -1,5 +1,9 @@
 import hashlib
 from flask import Blueprint, request, jsonify
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # I dont know what blueprints do or why we separate them
 notifications_bp = Blueprint('notifications', __name__)
@@ -8,8 +12,8 @@ frontend_bp = Blueprint('frontend', __name__)
 # eBay API credentials and endpoint
 # These should be stored securely and not hardcoded in production
 # https://developer.ebay.com/marketplace-account-deletion
-VERIFICATION_TOKEN = "your_verification_token_here"
-ENDPOINT_URL = "https://yourdomain.com/ebay/notifications"
+VERIFICATION_TOKEN = os.getenv('VERIFICATION_TOKEN')
+ENDPOINT_URL = os.getenv('ENDPOINT_URL')
 
 @notifications_bp.route('/ebay/notifications', methods=['GET', 'POST'])
 def ebay_notifications():
