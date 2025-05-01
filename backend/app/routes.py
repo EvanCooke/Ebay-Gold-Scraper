@@ -47,9 +47,6 @@ def ebay_notifications():
 @frontend_bp.route('/')
 def home():
     return """
-    <h1>Welcome to the eBay Gold Scraper API!</h1>
-    <p>Use the following endpoints:</p>
-    <ul>
-        <li><a href="/ebay/notifications">/ebay/notifications</a> - eBay notifications endpoint</li>
-    </ul>
+    <h1>Welcome to MeltWise!\n
+    Development in Progress</h1>
     """

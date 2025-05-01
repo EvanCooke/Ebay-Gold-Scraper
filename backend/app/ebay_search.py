@@ -7,17 +7,27 @@ import csv # for CSV file writing
 import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
-from backend.app.database import connect_to_db, insert_data 
+from database import connect_to_db, insert_data 
 
 
-load_dotenv() # Load environment variables from .env file
+load_dotenv(override=True) # Load environment variables from .env file
 
 # --- Configuration ---
-CLIENT_ID = os.environ.get('CLIENT_ID')
-CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token" # sandbox or production
-SEARCH_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search' # Sandbox
-ITEM_DETAILS_BASE_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item/' # Sandbox
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+print("CLIENT_ID:", CLIENT_ID)
+print("CLIENT_SECRET:", CLIENT_SECRET)
+
+# Sandbox
+# TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token" 
+# SEARCH_API_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search' 
+# ITEM_DETAILS_BASE_URL = 'https://api.sandbox.ebay.com/buy/browse/v1/item/'
+
+#Production
+TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"  
+SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"  
+ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
+
 
 SEARCH_KEYWORDS = 'gold'
 MARKETPLACE_ID = 'EBAY_US' 
@@ -241,6 +251,9 @@ if __name__ == "__main__":
     total_fetched = 0
     page_number = 1
 
+    # Add a flag to stop after one item
+    stop_after_one_item = True
+
     while page_number <= MAX_PAGES:
         item_summaries, total_listings = search_ebay_listings(
             access_token=access_token,
@@ -301,8 +314,16 @@ if __name__ == "__main__":
                 'item_specifics': item_specifics  # Store as JSON string for CSV
             })
 
+            # Stop after processing one item
+            if stop_after_one_item:
+                print("Stopping after processing one item for testing.")
+                break
+
             time.sleep(0.5)  # Be mindful of rate limits
-            
+
+        # Break the outer loop if testing with one item
+        if stop_after_one_item:
+            break
 
         total_fetched += len(item_summaries)
         if total_fetched >= total_listings or page_number >= MAX_PAGES:
@@ -323,7 +344,7 @@ if __name__ == "__main__":
     #     print("No data fetched to write to CSV.")
 
     # Establish a connection to the database
-    conn = connect_to_db(DATABASE, USER, PASSWORD, HOST, PORT)
+    conn = connect_to_db()
     if not conn:
         exit("Failed to connect to the database. Exiting.")
 
