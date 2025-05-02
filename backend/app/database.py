@@ -218,6 +218,30 @@ def fetch_data(conn, query, params=None, fetchone=False):
     finally:
         cursor.close()
 
+def clear_tables(conn):
+    """
+    Clears all data from the ebay_listings and ai_processed_listings tables.
+
+    Args:
+        conn: The database connection object.
+    """
+    if conn is None:
+        print("No database connection. Cannot clear tables.")
+        return
+
+    cursor = conn.cursor()
+    try:
+        # Clear data from ai_processed_listings first due to foreign key dependency
+        cursor.execute("TRUNCATE TABLE ai_processed_listings RESTART IDENTITY CASCADE;")
+        cursor.execute("TRUNCATE TABLE ebay_listings RESTART IDENTITY CASCADE;")
+        conn.commit()
+        print("Tables 'ai_processed_listings' and 'ebay_listings' cleared successfully.")
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Error clearing tables: {e}")
+    finally:
+        cursor.close()
+
 
 if __name__ == "__main__":
     conn = connect_to_db()
@@ -252,29 +276,31 @@ if __name__ == "__main__":
             'deal_score': 2.5
         }
 
-        if insert_data(conn, "ebay_listings", ebay_data):
-            print("ebay_listings insertion was successful")
-        else:
-            print("ebay_listings insertion failed")
+        clear_tables(conn)  # Clear tables before inserting new data
 
-        if insert_data(conn, "ai_processed_listings", ai_data):
-            print("ai_processed_listings insertion was successful")
-        else:
-            print("ai_processed_listings insertion failed")
+        # if insert_data(conn, "ebay_listings", ebay_data):
+        #     print("ebay_listings insertion was successful")
+        # else:
+        #     print("ebay_listings insertion failed")
 
-        # Example: Fetch all data from ebay_listings
-        query = "SELECT * FROM ebay_listings;"
-        results = fetch_data(conn, query)
-        if results:
-            print("All ebay_listings:")
-            for row in results:
-                print(row)
+        # if insert_data(conn, "ai_processed_listings", ai_data):
+        #     print("ai_processed_listings insertion was successful")
+        # else:
+        #     print("ai_processed_listings insertion failed")
 
-        # Example: Fetch a single listing by item_id
-        query = "SELECT title, price FROM ebay_listings WHERE item_id = %s;"
-        result = fetch_data(conn, query, (ebay_data['item_id'],), fetchone=True)
-        if result:
-            print(f"\nListing with item_id '{ebay_data['item_id']}': {result}")
+        # # Example: Fetch all data from ebay_listings
+        # query = "SELECT * FROM ebay_listings;"
+        # results = fetch_data(conn, query)
+        # if results:
+        #     print("All ebay_listings:")
+        #     for row in results:
+        #         print(row)
+
+        # # Example: Fetch a single listing by item_id
+        # query = "SELECT title, price FROM ebay_listings WHERE item_id = %s;"
+        # result = fetch_data(conn, query, (ebay_data['item_id'],), fetchone=True)
+        # if result:
+        #     print(f"\nListing with item_id '{ebay_data['item_id']}': {result}")
 
         conn.close()
     else:
