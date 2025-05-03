@@ -85,7 +85,8 @@ def create_tables(conn):
                 top_rated_buying_experience BOOLEAN,
                 description TEXT,
                 returns_accepted BOOLEAN,
-                item_specifics JSON
+                item_specifics JSON,
+                metal TEXT
             )
         """)
 
@@ -129,8 +130,8 @@ def insert_data(conn, table_name, data):
                 INSERT INTO ebay_listings (
                     item_id, title, price, currency, seller_username, seller_feedback_score,
                     feedback_percent, image_url, item_url, shipping_options,
-                    top_rated_buying_experience, description, returns_accepted, item_specifics
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    top_rated_buying_experience, description, returns_accepted, item_specifics, metal
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (item_id) DO NOTHING;  -- Or maybe UPDATE if that's your logic
             """, (
                 data['item_id'],
@@ -142,11 +143,12 @@ def insert_data(conn, table_name, data):
                 data['feedback_percent'],
                 data['image_url'],
                 data['item_url'],
-                Json(data['shipping_options']),  # Use Json for JSON fields
+                Json(data['shipping_options']) if data.get('shipping_options') else None,  # Use Json for JSON fields
                 data['top_rated_buying_experience'],
                 data['description'],
                 data['returns_accepted'],
-                Json(data['item_specifics'])   # Use Json for JSON fields
+                Json(data['item_specifics']) if data.get('item_specifics') else None,  # Use Json for JSON fields
+                data['metal']
             ))
 
         elif table_name == "ai_processed_listings":

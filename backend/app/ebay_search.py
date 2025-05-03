@@ -4,6 +4,7 @@ import base64 # for base64 encoding OAuth credentials
 import requests # for HTTP requests
 import json # for JSON parsing
 import csv # for CSV file writing
+import sys
 import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
@@ -15,8 +16,6 @@ load_dotenv(override=True) # Load environment variables from .env file
 # --- Configuration ---
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
-print("CLIENT_ID:", CLIENT_ID)
-print("CLIENT_SECRET:", CLIENT_SECRET)
 
 # Sandbox
 # TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token" 
@@ -29,7 +28,7 @@ SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
 
 
-SEARCH_KEYWORDS = 'gold'
+SEARCH_KEYWORDS = 'gold jewlery'
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20
@@ -133,6 +132,8 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
         params['filter'] = filter_str
         print(f"  Applying filter: '{filter_str}'")
         
+
+    #THIS IS WEIRD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
     if returns_accepted is not None:
         if 'filter' in params:
             params['filter'] += f",returnsAccepted:[{str(returns_accepted).lower()}]"
@@ -140,17 +141,16 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
             params['filter'] = f"returnsAccepted:[{str(returns_accepted).lower()}]"
         print(f"  Filtering for returns accepted: {returns_accepted}")
 
-    # print the full URL being requested for debugging purposes
-    full_url_with_params = requests.Request('GET', SEARCH_API_URL, headers=headers, params=params).prepare().url
-    print(f"Request URL: {full_url_with_params}") # Print the full URL
+    # # print the full URL being requested for debugging purposes
+    # full_url_with_params = requests.Request('GET', SEARCH_API_URL, headers=headers, params=params).prepare().url
+    # print(f"Request URL: {full_url_with_params}") # Print the full URL
 
     try:
         response = requests.get(SEARCH_API_URL, headers=headers, params=params, timeout=20)
         response.raise_for_status()
         listings_data = response.json() 
-        # print("listings data: ", listings_data)
         total_listings = listings_data.get('total', 0)
-        item_summaries = listings_data.get('itemSummaries', [])
+        item_summaries = listings_data.get('itemSummaries', []) # does not contain description or returnsAccepted, etc.
         print(f"Search successful! Found {total_listings} potential listings (returning {len(item_summaries)} on this page).")
         return item_summaries, total_listings
     except requests.exceptions.RequestException as e:
@@ -165,7 +165,7 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
         return None, 0
 
 # --- Function to Get Item Details ---
-def get_item_details(access_token, item_id, marketplace_id, max_retries=0, retry_delay=1):
+def get_item_details(access_token, item_id, marketplace_id, max_retries=1, retry_delay=1):
     """
     Retrieves detailed information for a specific item using the /item/{item_id} endpoint.
     See: https://developer.ebay.com/api-docs/buy/browse/resources/item/methods/getItem
@@ -191,25 +191,42 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=0, retry
 
     print(f"  Fetching details for Item ID: {item_id}...")
 
-    print(f"  Request URL: {details_url}") # Print the full URL
-
     for attempt in range(max_retries):
         try:
             response = requests.get(details_url, headers=headers, params=params, timeout=15)
             response.raise_for_status() # Raise an exception for HTTP errors
 
-            # Check rate limit headers
-            rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 1))  # Default to 1 if missing
-            reset_time = int(response.headers.get('X-RateLimit-Reset', 60))  # Default to 60 seconds if missing
-
-            # If rate limit is about to be exceeded, pause
-            if rate_limit_remaining == 0:
-                print(f"Rate limit reached. Waiting for {reset_time} seconds...")
-                time.sleep(reset_time)
-
-            # Parse and return item details
+            
             item_details = response.json()
-            return item_details
+
+            # Extract prioritized details
+            extracted_details = {
+                'description': item_details.get('description'),
+                'metal': None,
+                'returns_accepted': None,
+                'item_specifics': None  # Initialize
+            }
+
+            # VERY SUSPICIOUS__________----------------------------------________________-----------------____--_-_-__---_--
+            # Extract metal from localizedAspects
+            localized_aspects = item_details.get('localizedAspects', [])
+            for aspect in localized_aspects:
+                if aspect.get('name', '').lower() == 'metal':  # Safe access, case-insensitive
+                    extracted_details['metal'] = aspect.get('value')
+                    break  # Stop searching once found
+
+            # Extract returnsAccepted
+            return_terms = item_details.get('returnTerms', {})
+            extracted_details['returns_accepted'] = return_terms.get('returnsAccepted')
+
+            # Extract item specifics - build a dictionary
+            item_specifics_dict = {}
+            for aspect in localized_aspects:
+                item_specifics_dict[aspect.get('name')] = aspect.get('value')
+            extracted_details['item_specifics'] = item_specifics_dict
+            #__________----------------------------------________________-----------------____--_-_-__---_--
+
+            return extracted_details
 
         except requests.exceptions.RequestException as e:
             print(f"  Error fetching details for item {item_id} (Attempt {attempt + 1}/{max_retries}): {e}")
@@ -252,7 +269,7 @@ if __name__ == "__main__":
     page_number = 1
 
     # Add a flag to stop after one item
-    stop_after_one_item = True
+    stop_after_one_item = 0
 
     while page_number <= MAX_PAGES:
         item_summaries, total_listings = search_ebay_listings(
@@ -285,17 +302,11 @@ if __name__ == "__main__":
             top_rated = summary.get('topRatedBuyingExperience')
 
             item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
-            description = item_details.get('description', None) if item_details else None # are following if statements needed?
-            returns_accepted_flag = item_details.get('returnsAccepted', None) if item_details else None
-            print(f"  Returns accepted: {returns_accepted_flag}")
-            item_specifics_raw = item_details.get('localizedAspects', []) if item_details else None
-            item_specifics = {}
-            if item_specifics_raw:
-                for spec in item_specifics_raw:
-                    name = spec.get('name')
-                    value = spec.get('value')
-                    if name and value:
-                        item_specifics[name] = value
+            if item_details:
+                description = item_details.get('description', None)
+                returns_accepted_flag = item_details.get('returns_accepted', None) 
+                metal = item_details.get('metal')
+                item_specifics = item_details.get('item_specifics', {}) 
 
             all_item_data.append({
                 'item_id': item_id,
@@ -311,18 +322,20 @@ if __name__ == "__main__":
                 'top_rated_buying_experience': top_rated,
                 'description': description,
                 'returns_accepted': returns_accepted_flag,
-                'item_specifics': item_specifics  # Store as JSON string for CSV
+                'item_specifics': item_specifics,  # Store as JSON string for CSV
+                'metal': metal
             })
-
+            stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item:
-                print("Stopping after processing one item for testing.")
+            if stop_after_one_item >= 100:
+                print("Stopping after processing 20 items for testing.")
                 break
 
             time.sleep(0.5)  # Be mindful of rate limits
 
+        
         # Break the outer loop if testing with one item
-        if stop_after_one_item:
+        if stop_after_one_item >= 100:
             break
 
         total_fetched += len(item_summaries)
