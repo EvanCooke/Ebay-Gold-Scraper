@@ -9,6 +9,7 @@ import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
 from database import connect_to_db, insert_data 
+from zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
 
 
 load_dotenv(override=True) # Load environment variables from .env file
@@ -327,7 +328,7 @@ if __name__ == "__main__":
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 100:
+            if stop_after_one_item >= 20:
                 print("Stopping after processing 20 items for testing.")
                 break
 
@@ -335,7 +336,7 @@ if __name__ == "__main__":
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 100:
+        if stop_after_one_item >= 20:
             break
 
         total_fetched += len(item_summaries)
@@ -372,6 +373,10 @@ if __name__ == "__main__":
                 print(f"Failed to insert item {item['item_id']}.")
     else:
         print("No data fetched to insert into the database.")
+
+    print("updating gold column...")
+    # Update the 'gold' column using the zero-shot classifier
+    update_gold_column(conn)
 
     # Close the database connection
     conn.close()

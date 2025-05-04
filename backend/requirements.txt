@@ -8,3 +8,5 @@ pandas==2.1.1  # For data manipulation and CSV handling
 backoff==2.2.1  # For retrying failed API requests with exponential backoff
 # waitress==3.0.2  # WSGI HTTP server for running Flask in production
 gunicorn # WSGI HTTP server for running Flask in production
+transformers  # For using Hugging Face Transformers models
+torch  # Required for running Hugging Face models

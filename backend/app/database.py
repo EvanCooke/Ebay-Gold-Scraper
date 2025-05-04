@@ -86,7 +86,9 @@ def create_tables(conn):
                 description TEXT,
                 returns_accepted BOOLEAN,
                 item_specifics JSON,
-                metal TEXT
+                metal TEXT,
+                gold BOOLEAN
+
             )
         """)
 
@@ -149,6 +151,7 @@ def insert_data(conn, table_name, data):
                 data['returns_accepted'],
                 Json(data['item_specifics']) if data.get('item_specifics') else None,  # Use Json for JSON fields
                 data['metal']
+                
             ))
 
         elif table_name == "ai_processed_listings":
