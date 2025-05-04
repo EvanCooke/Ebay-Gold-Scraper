@@ -1,6 +1,6 @@
-from backend.app import create_app
+# move all mains in database.py, ebay_search.py, etc. to this file
 
-app = create_app()
-
-if __name__ == "__main__": # This checks if the file is being run directly (not imported somewhere else)
-    app.run(host="0.0.0.0", port=5000) # host="0.0.0.0" means "accept connections from any device"
+# - clear database tables
+# - search ebay using api and insert into database
+# - use zero shot classifier to classify each listing
+# - TBD
