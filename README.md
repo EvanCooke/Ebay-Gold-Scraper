@@ -5,16 +5,16 @@ value, assesses scam risk, and presents profitable, affiliate-linked deals.
 
 ## Project Workflow & Timeline
 
-| Phase                      | Tasks                                                                                                              | Estimate   | Tools & Notes                                                                    |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------|
-| **1. Scraping Listings**   | - Configure eBay API credentials.<br>- Fetch listings (title, description, price, seller metrics, URLs).<br>- Filter by category and `conditionId`. | Completed  | • eBay Browse API + `requests`<br>• Python (`pandas`)                            |
-| **2. Product Verification**| - Apply regex rules for “plated”/“hollow”.<br>- Zero-shot classification (gold vs. non-gold) for edge cases.      | 2–3 days   | • Python `re`<br>• HF Transformers zero-shot classifier                           |
-| **3. Metadata Extraction** | - Prefer structured `item_specifics` JSON for “Total Carat Weight” & “Metal Purity”.<br>- Fallback to hybrid regex + spaCy (EntityRuler/Matcher) over `title` + `description`.<br>- Normalize units (grams, karats). | 3–5 days   | • spaCy (EntityRuler & Matcher)<br>• Python unit-conversion logic                 |
-| **4. Scam Detection**      | - Rule-based checks (price far below melt, seller rating < 90%, new accounts).<br>- GPT-4 (or 3.5) risk-score prompt. | 2–3 days   | • OpenAI API<br>• Python (`pandas`, `numpy`)                                      |
-| **5. Deal Valuation**      | - Fetch live spot gold price.<br>- Calculate effective price (unit × purity).<br>- Flag > 10% below market.         | 1–2 days   | • MetalPriceAPI<br>• Python (`requests`, `pandas`), cache results                |
-| **6. Database Integration**| - Upsert into PostgreSQL.<br>- Skip listings missing weight/purity or flagged as scams (conditional UPDATE).       | 1 day      | • `psycopg2`                                                                     |
-| **7. Pipeline Orchestration**| - Chain modules into one script.<br>- Schedule daily via cron.<br>- Log errors, missing extractions, confidence. | 1–2 days   | • Python scripts<br>• Cron job (or Task Scheduler)                               |
-| **8. Testing & Refinement**| - Manual spot-check 10–20% of listings.<br>- Refine regex/spaCy patterns and LLM prompts.                         | 3–5 days   | • Google Sheets/Excel<br>• Python debugging & unit tests                         |
+| Phase                      | Tasks                                                                                                              | Tools & Notes                                                                    |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| **1. Scraping Listings**   | - Configure eBay API credentials.<br>- Fetch listings (title, description, price, seller metrics, URLs).<br>- Filter by category and `conditionId`. | • eBay Browse API + `requests`<br>• Python (`pandas`)                            |
+| **2. Product Verification**| - Apply regex rules for “plated”/“hollow”.<br>- Zero-shot classification (gold vs. non-gold) for edge cases.      | • Python `re`<br>• HF Transformers zero-shot classifier                           |
+| **3. Metadata Extraction** | - Prefer structured `item_specifics` JSON for “Total Carat Weight” & “Metal Purity”.<br>- Fallback to hybrid regex + spaCy (EntityRuler/Matcher) over `title` + `description`.<br>- Normalize units (grams, karats). | • spaCy (EntityRuler & Matcher)<br>• Python unit-conversion logic                 |
+| **4. Scam Detection**      | - Rule-based checks (price far below melt, seller rating < 90%, new accounts).<br>- GPT-4 (or 3.5) risk-score prompt. | • OpenAI API<br>• Python (`pandas`, `numpy`)                                      |
+| **5. Deal Valuation**      | - Fetch live spot gold price.<br>- Calculate effective price (unit × purity).<br>- Flag > 10% below market.         | • MetalPriceAPI<br>• Python (`requests`, `pandas`), cache results                |
+| **6. Database Integration**| - Upsert into PostgreSQL.<br>- Skip listings missing weight/purity or flagged as scams (conditional UPDATE).       | • `psycopg2`                                                                     |
+| **7. Pipeline Orchestration**| - Chain modules into one script.<br>- Schedule daily via cron.<br>- Log errors, missing extractions, confidence. | • Python scripts<br>• Cron job (or Task Scheduler)                               |
+| **8. Testing & Refinement**| - Manual spot-check 10–20% of listings.<br>- Refine regex/spaCy patterns and LLM prompts.                         | • Google Sheets/Excel<br>• Python debugging & unit tests                         |
 
 ---
 ## Key Attributes & Extraction Targets
