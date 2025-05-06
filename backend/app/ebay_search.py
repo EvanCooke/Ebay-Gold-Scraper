@@ -29,7 +29,7 @@ SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
 
 
-SEARCH_KEYWORDS = 'gold jewlery'
+SEARCH_KEYWORDS = 'gold scrap jewelry' 
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20
@@ -328,15 +328,15 @@ if __name__ == "__main__":
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 3:
+            if stop_after_one_item >= 20:
                 print("Stopping after processing 20 items for testing.")
                 break
 
-            time.sleep(0.5)  # Be mindful of rate limits
+            # time.sleep(0.5)  # Be mindful of rate limits
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 3:
+        if stop_after_one_item >= 20:
             break
 
         total_fetched += len(item_summaries)

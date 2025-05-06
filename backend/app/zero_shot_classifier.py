@@ -4,20 +4,24 @@ from transformers import pipeline
 classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
 # # consider using the 'metal' field in the ebay api response to filter out non-gold items as well
-# def classify_listing(row):
+def classify_listing(row):
 
-#     # Extract title and description from the row
-#     print(row)
-#     title = row[1]
-#     description = row[11]
+    # Perform zero-shot classification
+    metal = row[3] if row[3] else ""
+    classifier_result = classifier(row[1] + ", Metal: " + metal + ", " + row[2],  ["authentic solid gold item", "non-gold or fake or gold-plated item"])
+    # is_gold = classifier_result["labels"][0] == "authentic solid gold item"
 
-#     # Combine title and description for classification
-#     text = title + " " + description
-#     candidate_labels = ["gold", "non-gold"]
+    # if no metal is provided, assume it is listed gold
+    # if metal is listed but not listed gold, assume it is not gold
+    authentic_gold_terms = ["gold", "alloy", "unknown", "null"]
+    contains_gold = metal.lower() in authentic_gold_terms or row[3] is None
 
-#     # Perform zero-shot classification
-#     result = classifier(text, candidate_labels)
-#     return result["labels"][0] == "gold"
+    # my attempt at making zero shot classifier more accurate, may have to use regex instead of python string methods
+    if classifier_result["labels"][0] == "authentic solid gold item" and contains_gold:
+        return True
+    else:
+        return False
+    
 
 def update_gold_column(conn):
     """
@@ -36,19 +40,11 @@ def update_gold_column(conn):
 
         # Classify each row and update the 'gold' column
         for row in rows:
-            # Perform zero-shot classification
-            classifier_result = classifier(row[1] + ", Metal: " + row[3] + ", " + row[2],  ["authentic solid gold item", "non-gold or fake or gold-plated item"])
-            # is_gold = classifier_result["labels"][0] == "authentic solid gold item"
-
-            # my attempt at making zero shot classifier more accurate, may have to use regex instead of python string methods
-            if classifier_result["labels"][0] == "authentic solid gold item" and "gold" in row[3].lower():
-                is_gold = True
-            else:
-                is_gold = False
+            result = classify_listing(row)
 
             # Update the 'gold' column for the current row
             update_query = "UPDATE ebay_listings SET is_gold = %s WHERE item_id = %s;"
-            cursor.execute(update_query, (is_gold, row[0]))
+            cursor.execute(update_query, (result, row[0]))
 
         conn.commit()
         print("Updated 'gold' column for all rows in the ebay_listings table.")
