@@ -1,3 +1,30 @@
+# ---------------------------------------------------------------------------------------------------------
+# Check item_specifics for "Total Carat Weight" / "Metal Purity (/ "Metal" ???)".
+
+# If present, normalize values (e.g. strip “carats”, convert to float) and write directly to your total_carat_weight and metal_purity columns.
+
+# If absent, concatenate title + description into a single text blob.
+
+# Run regex over text first:
+
+# python
+# Copy
+# Edit
+# for m in weight_pattern.finditer(text):
+#     # convert oz → grams, collect (value, span)
+# for m in purity_pattern.finditer(text):
+#     # collect purity spans
+# ``` :contentReference[oaicite:10]{index=10}.  
+# Pass text into a spaCy pipeline with an EntityRuler (or Matcher) using your regex patterns for “WEIGHT” and “PURITY” 
+# Python Humanities
+# spaCy
+# .
+
+# Merge & dedupe: prefer exact regex matches; use spaCy-only matches for edge cases.
+
+# Normalize numeric strings → float, units standardized (g), and assign to your metadata fields.
+# ---------------------------------------------------------------------------------------------------------
+
 from transformers import pipeline
 
 # Load the zero-shot classification pipeline

@@ -211,10 +211,6 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=1, retry
             # VERY SUSPICIOUS__________----------------------------------________________-----------------____--_-_-__---_--
             # Extract metal from localizedAspects
             localized_aspects = item_details.get('localizedAspects', [])
-            for aspect in localized_aspects:
-                if aspect.get('name', '').lower() == 'metal':  # Safe access, case-insensitive
-                    extracted_details['metal'] = aspect.get('value')
-                    break  # Stop searching once found
 
             # Extract returnsAccepted
             return_terms = item_details.get('returnTerms', {})
@@ -223,7 +219,15 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=1, retry
             # Extract item specifics - build a dictionary
             item_specifics_dict = {}
             for aspect in localized_aspects:
-                item_specifics_dict[aspect.get('name')] = aspect.get('value')
+                name = aspect.get('name', '').lower()  # Safe access, case-insensitive
+                if name == 'metal':  # Safe access, case-insensitive
+                    extracted_details['metal'] = aspect.get('value')
+                elif name == 'total carat weight':
+                    extracted_details['total_carat_weight'] = aspect.get('value')
+                elif name == 'metal purity':
+                    extracted_details['metal_purity'] = aspect.get('value')
+                else: 
+                    item_specifics_dict[aspect.get('name')] = aspect.get('value')
             extracted_details['item_specifics'] = item_specifics_dict
             #__________----------------------------------________________-----------------____--_-_-__---_--
 
@@ -289,46 +293,32 @@ if __name__ == "__main__":
             break
 
         for summary in item_summaries:
-            item_id = summary.get('itemId')
-            title = summary.get('title')
-            price = summary.get('price', {}).get('value')
-            currency = summary.get('price', {}).get('currency')
             seller_info = summary.get('seller', {})
-            seller_username = seller_info.get('username')
-            seller_feedback_score = seller_info.get('feedbackScore')
-            feedback_percent = seller_info.get('feedbackPercentage')
-            image_url = summary.get('image', {}).get('imageUrl')
-            item_url = summary.get('itemWebUrl')
-            shipping_options = summary.get('shippingOptions')
-            top_rated = summary.get('topRatedBuyingExperience')
-
+            item_id = summary.get('itemId')
             item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
-            if item_details:
-                description = item_details.get('description', None)
-                returns_accepted_flag = item_details.get('returns_accepted', None) 
-                metal = item_details.get('metal')
-                item_specifics = item_details.get('item_specifics', {}) 
-
+            
             all_item_data.append({
-                'item_id': item_id,
-                'title': title,
-                'price': price,
-                'currency': currency,
-                'seller_username': seller_username,
-                'seller_feedback_score': seller_feedback_score,
-                'feedback_percent': feedback_percent,
-                'image_url': image_url,
-                'item_url': item_url,
-                'shipping_options': shipping_options if shipping_options else None,
-                'top_rated_buying_experience': top_rated,
-                'description': description,
-                'returns_accepted': returns_accepted_flag,
-                'item_specifics': item_specifics,  # Store as JSON string for CSV
-                'metal': metal
+                'item_id': summary.get('itemId'),
+                'title': summary.get('title'),
+                'price': summary.get('price', {}).get('value'),
+                'currency': summary.get('price', {}).get('currency'),
+                'seller_username': seller_info.get('username'),
+                'seller_feedback_score': seller_info.get('feedbackScore'),
+                'feedback_percent': seller_info.get('feedbackPercentage'),
+                'image_url': summary.get('image', {}).get('imageUrl'),
+                'item_url': summary.get('itemWebUrl'),
+                'shipping_options': summary.get('shippingOptions', None),
+                'top_rated_buying_experience': summary.get('topRatedBuyingExperience'),
+                'description': item_details.get('description', None),
+                'returns_accepted': item_details.get('returns_accepted', None),
+                'metal': item_details.get('metal', None),
+                'total_carat_weight': item_details.get('total_carat_weight', None),
+                'metal_purity': item_details.get('metal_purity', None),
+                'item_specifics': item_details.get('item_specifics', {}),  # Store as JSON string for CSV'
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 20:
+            if stop_after_one_item >= 10:
                 print("Stopping after processing 20 items for testing.")
                 break
 
@@ -336,7 +326,7 @@ if __name__ == "__main__":
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 20:
+        if stop_after_one_item >= 10:
             break
 
         total_fetched += len(item_summaries)

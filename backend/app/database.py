@@ -87,6 +87,8 @@ def create_tables(conn):
                 returns_accepted BOOLEAN,
                 item_specifics JSON,
                 metal TEXT,
+                total_carat_weight TEXT,
+                metal_purity TEXT,      
                 gold BOOLEAN
 
             )
@@ -132,9 +134,10 @@ def insert_data(conn, table_name, data):
                 INSERT INTO ebay_listings (
                     item_id, title, price, currency, seller_username, seller_feedback_score,
                     feedback_percent, image_url, item_url, shipping_options,
-                    top_rated_buying_experience, description, returns_accepted, item_specifics, metal
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (item_id) DO NOTHING;  -- Or maybe UPDATE if that's your logic
+                    top_rated_buying_experience, description, returns_accepted, item_specifics, metal,
+                    total_carat_weight, metal_purity, is_gold
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (item_id) DO NOTHING;
             """, (
                 data['item_id'],
                 data['title'],
@@ -145,13 +148,15 @@ def insert_data(conn, table_name, data):
                 data['feedback_percent'],
                 data['image_url'],
                 data['item_url'],
-                Json(data['shipping_options']) if data.get('shipping_options') else None,  # Use Json for JSON fields
+                Json(data['shipping_options']) if data.get('shipping_options') else None,
                 data['top_rated_buying_experience'],
                 data['description'],
                 data['returns_accepted'],
-                Json(data['item_specifics']) if data.get('item_specifics') else None,  # Use Json for JSON fields
-                data['metal']
-                
+                Json(data['item_specifics']) if data.get('item_specifics') else None,
+                data['metal'],
+                data.get('total_carat_weight'),  # New column for total carat weight
+                data.get('metal_purity'),        # New column for metal purity
+                data.get('is_gold', None)        # Optional: Include is_gold if available
             ))
 
         elif table_name == "ai_processed_listings":
@@ -255,20 +260,24 @@ if __name__ == "__main__":
 
         # Example data (replace with your actual data)
         ebay_data = {
-            'item_id': '12345abcde',  # Example mixed string
-            'title': "Rare Gold Coin",
-            'price': 1250.00,
-            'currency': "USD",
-            'seller_username': "SellerGold4U",
-            'seller_feedback_score': 1025,
-            'feedback_percent': 99.5,
-            'image_url': "https://example.com/goldcoin.jpg",
-            'item_url': "https://www.ebay.com/itm/12345abcde",
-            'shipping_options': [{"carrier": "USPS", "cost": 8.50}, {"carrier": "FedEx", "cost": 12.00}],
+            'item_id': '12345',
+            'title': '24k Gold Necklace',
+            'price': 199.99,
+            'currency': 'USD',
+            'seller_username': 'gold_seller',
+            'seller_feedback_score': 1000,
+            'feedback_percent': 99.9,
+            'image_url': 'http://example.com/image.jpg',
+            'item_url': 'http://example.com/item/12345',
+            'shipping_options': None,
             'top_rated_buying_experience': True,
-            'description': "A rare gold coin from the 1800s. Excellent condition.",
+            'description': 'A beautiful 24k gold necklace.',
             'returns_accepted': True,
-            'item_specifics': {"Metal": "Gold", "Fineness": "0.999", "Year": "1892"}
+            'item_specifics': {'Metal': 'Gold', 'Purity': '24k'},
+            'metal': 'Gold',
+            'total_carat_weight': '1.5',
+            'metal_purity': '24k',
+            'is_gold': True
         }
 
         ai_data = {
