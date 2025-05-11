@@ -90,6 +90,8 @@ def create_tables(conn):
                 total_carat_weight TEXT,
                 metal_purity TEXT,      
                 gold BOOLEAN
+                weight FLOAT,
+                purity INT,
 
             )
         """)

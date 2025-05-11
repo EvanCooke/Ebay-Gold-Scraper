@@ -1,9 +1,6 @@
 from transformers import pipeline
 import re
 
-# Regex patterns for weight and purity
-weight_pattern = re.compile(r"(\d+(?:\.\d+)?)\s*(oz|grams|g)", re.IGNORECASE)
-purity_pattern = re.compile(r"(\d{1,2})\s*(k|kt|karat)", re.IGNORECASE)
 
 # Load the zero-shot classification pipeline
 classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
@@ -37,13 +34,6 @@ def classify_listing(row):
     # if "test" is in title, return False
     if "test" in row[1].lower():
         return False
-
-    # Placeholder for regex validation (optional in this phase)
-    weight_match = weight_pattern.search(input_text)
-    purity_match = purity_pattern.search(input_text)
-    # Uncomment the following lines if weight and purity are required
-    # if not weight_match or not purity_match:
-    #     return False
 
     # Define labels for zero-shot classification
     labels = [

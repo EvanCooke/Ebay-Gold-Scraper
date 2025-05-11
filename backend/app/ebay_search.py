@@ -5,11 +5,13 @@ import requests # for HTTP requests
 import json # for JSON parsing
 import csv # for CSV file writing
 import sys
+import re # for regex operations
 import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
 from database import connect_to_db, insert_data 
 from zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
+from extract_metadata import extract_metadata # Import the metadata extraction function
 
 
 load_dotenv(override=True) # Load environment variables from .env file
@@ -29,7 +31,7 @@ SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
 
 
-SEARCH_KEYWORDS = 'gold scrap jewelry' 
+SEARCH_KEYWORDS = 'real gold jewelry' 
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20
@@ -202,7 +204,7 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=1, retry
 
             # Extract prioritized details
             extracted_details = {
-                'description': item_details.get('description'),
+                'description': sanitize_text(item_details.get('description')),
                 'metal': None,
                 'returns_accepted': None,
                 'item_specifics': None  # Initialize
@@ -255,6 +257,14 @@ def get_item_details(access_token, item_id, marketplace_id, max_retries=1, retry
                 print(f"  Max retries reached for item {item_id}. Skipping.")
                 return None
     return None
+
+# Removes HTML tags and unnecessary characters from the input text.
+def sanitize_text(text):
+    # Remove HTML tags
+    clean_text = re.sub(r"<[^>]*>", "", text)
+    # Remove extra spaces
+    clean_text = clean_text.strip()
+    return clean_text
 
 # --- Main Execution ---
 if __name__ == "__main__":
@@ -318,7 +328,7 @@ if __name__ == "__main__":
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 10:
+            if stop_after_one_item >= 5:
                 print("Stopping after processing 20 items for testing.")
                 break
 
@@ -326,7 +336,7 @@ if __name__ == "__main__":
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 10:
+        if stop_after_one_item >= 5:
             break
 
         total_fetched += len(item_summaries)
@@ -367,6 +377,9 @@ if __name__ == "__main__":
     print("updating gold column...")
     # Update the 'gold' column using the zero-shot classifier
     update_gold_column(conn)
+
+    print("Extracting Metadata...")
+    extract_metadata(conn)
 
     # Close the database connection
     conn.close()
