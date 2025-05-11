@@ -31,7 +31,7 @@ SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
 
 
-SEARCH_KEYWORDS = 'real gold jewelry' 
+SEARCH_KEYWORDS = 'scrap gold 14k' 
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20

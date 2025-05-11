@@ -48,12 +48,15 @@ nlp = spacy.load("en_core_web_sm")
 
 # Normalizes weight to grams.
 def normalize_weight(weight_str):
-    weight_str = weight_str.lower()
-    if "oz" in weight_str:
-        return float(weight_str.split()[0]) * 28.3495  # Convert ounces to grams
-    elif "grams" in weight_str or "g" in weight_str:
-        return float(weight_str.split()[0])
-    return None
+    try:
+        weight_str = weight_str.lower()
+        if "oz" in weight_str or "ounce" in weight_str:
+            return float(weight_str.split()[0]) * 28.3495  # Convert ounces to grams
+        elif "grams" in weight_str or "g" in weight_str:
+            return float(weight_str.split()[0])
+        return None
+    except (ValueError, AttributeError):
+        return None
 
 # Normalizes purity to karats.
 def normalize_purity(purity_str):
@@ -99,18 +102,18 @@ def extract_from_text_blob(row):
     """
 
     # Regex patterns for weight and purity
-    weight_pattern = re.compile(r"(\d+(?:\.\d+)?)\s*(oz|grams|g)", re.IGNORECASE)
-    purity_pattern = re.compile(r"(\d{1,2})\s*(k|kt|karat)", re.IGNORECASE)
+    weight_pattern = re.compile(r"(\d+(?:\.\d+)?)\s*(oz|grams?|g)", re.IGNORECASE) # group(1) is the number, group(2) is the unit
+    purity_pattern = re.compile(r"(\d{1,2})\s*(k|kt|karat?)", re.IGNORECASE)    
 
     text_blob = f"{row[1]} {row[2]}".lower()
 
     # Extract weight
-    weight_match = weight_pattern.search(text_blob)
-    weight = normalize_weight(weight_match.group(1)) if weight_match else None
+    weight_match = weight_pattern.search(text_blob) # this works
+    weight = normalize_weight(f"{weight_match.group(1)} {weight_match.group(2)}") if weight_match else None
 
     # Extract purity
     purity_match = purity_pattern.search(text_blob)
-    purity = normalize_purity(purity_match.group(1)) if purity_match else None
+    purity = normalize_purity(f"{purity_match.group(1)} {purity_match.group(2)}") if purity_match else None
 
     return {"weight": weight, "purity": purity}
 
@@ -131,7 +134,7 @@ def extract_with_spacy(text):
     # Look for weight and purity in the text
     for ent in doc.ents:
         if ent.label_ == "QUANTITY":  # spaCy's entity label for quantities
-            if "oz" in ent.text.lower() or "grams" in ent.text.lower() or "g" in ent.text.lower():
+            if "oz" in ent.text.lower() or "gram" in ent.text.lower() or "g" in ent.text.lower():
                 weight = normalize_weight(ent.text)
         elif ent.label_ == "CARDINAL":  # spaCy's entity label for numbers
             if "k" in ent.text.lower() or "karat" in ent.text.lower():
@@ -165,13 +168,14 @@ def extract_metadata(conn):
         weight = item_specifics_data.get("weight") or text_blob_data.get("weight")
         purity = item_specifics_data.get("purity") or text_blob_data.get("purity")
 
+        print(f"weight: {weight} purity: {purity}")
+
         # Use spaCy as a fallback if weight or purity is still missing
         if not weight or not purity:
             spacy_data = extract_with_spacy(f"{row[1]} {row[2]}")
-            weight = weight or normalize_weight(spacy_data.get("weight")) if spacy_data.get("weight") else None
-            purity = purity or normalize_purity(spacy_data.get("purity")) if spacy_data.get("purity") else None
-
-        print(f"weight: {weight} purity: {purity}")
+            print("spacy_data: " + str(spacy_data))
+            weight = weight or normalize_weight(spacy_data.get("weight"))
+            purity = purity or normalize_purity(spacy_data.get("purity"))
 
         # Update the database if both weight and purity are found
         if weight and purity:
