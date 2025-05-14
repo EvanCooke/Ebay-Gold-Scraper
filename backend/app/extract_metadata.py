@@ -179,6 +179,7 @@ def extract_metadata(conn):
 
         # Update the database if both weight and purity are found
         if weight and purity:
+   
             update_query = """
                 UPDATE ebay_listings
                 SET weight = %s, purity = %s

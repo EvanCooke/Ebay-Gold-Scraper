@@ -12,6 +12,7 @@ from psycopg2.extras import Json  # For handling JSON data
 from database import connect_to_db, insert_data 
 from zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
 from extract_metadata import extract_metadata # Import the metadata extraction function
+from calculate_profit import update_profit_column # Import the profit calculation function
 
 
 load_dotenv(override=True) # Load environment variables from .env file
@@ -328,7 +329,7 @@ if __name__ == "__main__":
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 20:
+            if stop_after_one_item >= 10:
                 print("Stopping after processing 20 items for testing.")
                 break
 
@@ -336,7 +337,7 @@ if __name__ == "__main__":
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 20:
+        if stop_after_one_item >= 10:
             break
 
         total_fetched += len(item_summaries)
@@ -380,6 +381,9 @@ if __name__ == "__main__":
 
     print("Extracting Metadata...")
     extract_metadata(conn)
+
+    print("Updating profit column...")
+    update_profit_column(conn)
 
     # Close the database connection
     conn.close()
