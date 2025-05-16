@@ -11,3 +11,5 @@ gunicorn # WSGI HTTP server for running Flask in production
 transformers  # For using Hugging Face Transformers models
 torch  # Required for running Hugging Face models
 spacy # For NLP tasks
+openai # For OpenAI API
+tiktoken
