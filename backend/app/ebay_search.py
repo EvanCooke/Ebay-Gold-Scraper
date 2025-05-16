@@ -13,7 +13,7 @@ from database import connect_to_db, insert_data
 from zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
 from extract_metadata import extract_metadata # Import the metadata extraction function
 from calculate_profit import update_profit_column # Import the profit calculation function
-
+from scam_risk_score import update_scam_risk_score_column # Import the scam risk score function
 
 load_dotenv(override=True) # Load environment variables from .env file
 
@@ -47,6 +47,8 @@ USER = os.environ.get('DB_USER')
 PASSWORD = os.environ.get('DB_PASSWORD')
 HOST = os.environ.get('DB_HOST')
 PORT = os.environ.get('DB_PORT')
+
+API_KEY = os.getenv('OPENAI_API_KEY')
 
 
 # --- Function to Obtain Access Token ---
@@ -384,6 +386,9 @@ if __name__ == "__main__":
 
     print("Updating profit column...")
     update_profit_column(conn)
+
+    print("Updating scam risk score column...")
+    update_scam_risk_score_column(conn)
 
     # Close the database connection
     conn.close()

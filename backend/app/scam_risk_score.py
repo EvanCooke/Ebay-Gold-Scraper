@@ -1,6 +1,13 @@
 import openai
 import tiktoken # OpenAI's tokenizer
 import json
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+API_KEY = os.getenv('OPENAI_API_KEY')
+
 
 MODEL_NAME = "gpt-3.5-turbo"
 MAX_TOKENS_FOR_MODEL = 4096
@@ -20,13 +27,18 @@ A high profit margin compared to melt value might be a red flag, unless justifie
 Low seller feedback, poor feedback percentage, or lack of top-rated status can increase risk.
 Vague or copied descriptions, or descriptions that don't match the title/images (if you had images), are risky.
 Extremely low prices for the supposed weight/purity are suspicious.
-No returns accepted can be a minor risk factor.
+No returns accepted can be a risk factor.
 
-Provide your output as a JSON array, where each object in the array contains only 'item_id' and 'scam_risk_score'. Do not include any other text or explanations outside this JSON structure.
+For each listing, provide your output as a JSON array, where each object contains:
+- 'item_id'
+- 'scam_risk_score'
+- 'explanation': a brief justification (3-4 bullet points) for the assigned score.
+
+Do not include any other text or explanations outside this JSON structure.
 Example for two items:
 [
-  {"item_id": "123", "scam_risk_score": 2},
-  {"item_id": "456", "scam_risk_score": 7}
+  {"item_id": "123", "scam_risk_score": 2, "explanation": "High seller feedback. Price matches melt value."},
+  {"item_id": "456", "scam_risk_score": 7, "explanation": "Low feedback. Price much lower than melt value."}
 ]
 
 Here are the listings to analyze:
@@ -56,7 +68,7 @@ def format_listing_for_prompt(row):
         f"---\n" # Separator between items
     )
 
-
+### -------------------------------https://www.youtube.com/watch?v=CHsRy4gl6hk-------------------------------------
 def get_scam_scores_from_chatgpt(prompt):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -111,10 +123,14 @@ def update_scam_risk_score_column(conn):
             for item in scam_scores:
                 update_query = """
                     UPDATE ebay_listings
-                    SET scan_risk_score = %s
+                    SET scam_risk_score = %s,
+                        scam_risk_score_explanation = %s
                     WHERE item_id = %s;
                 """
-                cursor.execute(update_query, (item['scam_risk_score'], item['item_id']))
+                cursor.execute(update_query, (item['scam_risk_score'], item['explanation'], item['item_id']))
+
+        # Commit the changes to the database
+        conn.commit()
 
     except Exception as e:
         conn.rollback()
