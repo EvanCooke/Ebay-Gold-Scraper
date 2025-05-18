@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import tiktoken # OpenAI's tokenizer
 import json
 import os
@@ -11,7 +11,7 @@ API_KEY = os.getenv('OPENAI_API_KEY')
 
 MODEL_NAME = "gpt-3.5-turbo"
 MAX_TOKENS_FOR_MODEL = 4096
-TARGET_TOKENS_PER_BATCH = MAX_TOKENS_FOR_MODEL - 500 # Reserve 2000 for response
+TARGET_TOKENS_PER_BATCH = MAX_TOKENS_FOR_MODEL - 500 # Reserve 500 for response
 
 encoding = tiktoken.encoding_for_model(MODEL_NAME)
 
@@ -70,12 +70,16 @@ def format_listing_for_prompt(row):
 
 ### -------------------------------https://www.youtube.com/watch?v=CHsRy4gl6hk-------------------------------------
 def get_scam_scores_from_chatgpt(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "You are a helpful assistant."},
-                  {"role": "user", "content": prompt}]
+    client = OpenAI(
+        api_key=API_KEY,
     )
-    return response['choices'][0]['message']['content']
+
+    response = client.responses.create(
+        model= MODEL_NAME,
+        input=prompt
+    )
+
+    print(response.output_text)
 
 def update_scam_risk_score_column(conn):
     cursor = conn.cursor()
