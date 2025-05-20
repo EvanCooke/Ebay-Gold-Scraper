@@ -331,7 +331,7 @@ if __name__ == "__main__":
             })
             stop_after_one_item += 1
             # Stop after processing one item
-            if stop_after_one_item >= 10:
+            if stop_after_one_item >= 200:
                 print("Stopping after processing 20 items for testing.")
                 break
 
@@ -339,7 +339,7 @@ if __name__ == "__main__":
 
         
         # Break the outer loop if testing with one item
-        if stop_after_one_item >= 10:
+        if stop_after_one_item >= 200:
             break
 
         total_fetched += len(item_summaries)

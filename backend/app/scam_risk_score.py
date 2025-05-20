@@ -3,6 +3,7 @@ import tiktoken # OpenAI's tokenizer
 import json
 import os
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
@@ -11,7 +12,6 @@ API_KEY = os.getenv('OPENAI_API_KEY')
 
 MODEL_NAME = "gpt-3.5-turbo"
 MAX_TOKENS_FOR_MODEL = 4096
-TARGET_TOKENS_PER_BATCH = MAX_TOKENS_FOR_MODEL - 500 # Reserve 500 for response
 
 encoding = tiktoken.encoding_for_model(MODEL_NAME)
 
@@ -27,7 +27,8 @@ A high profit margin compared to melt value might be a red flag, unless justifie
 Low seller feedback, poor feedback percentage, or lack of top-rated status can increase risk.
 Vague or copied descriptions, or descriptions that don't match the title/images (if you had images), are risky.
 Extremely low prices for the supposed weight/purity are suspicious.
-No returns accepted can be a risk factor.
+No returns accepted can be a risk factor. 
+Be cautious of listings where non gold items (such as Amethyst) are contributing to the weight and thus the profit
 
 For each listing, provide your output as a JSON array, where each object contains:
 - 'item_id'
@@ -43,6 +44,8 @@ Example for two items:
 
 Here are the listings to analyze:
 """
+
+TARGET_TOKENS_PER_BATCH = MAX_TOKENS_FOR_MODEL - (count_tokens(SYSTEM_PROMPT) + 500) # Reserve 500 for response
 
 # Helper function to format a single listing
 def format_listing_for_prompt(row):
@@ -68,6 +71,16 @@ def format_listing_for_prompt(row):
         f"---\n" # Separator between items
     )
 
+def clean_gpt_json_response(response):
+    # Remove code block markers if present
+    response = response.strip()
+    if response.startswith("```"):
+        response = re.sub(r"^```[a-zA-Z]*\n?", "", response)
+        response = re.sub(r"```$", "", response)
+    # Remove trailing commas before closing brackets
+    response = re.sub(r",\s*\]", "]", response)
+    return response
+
 ### -------------------------------https://www.youtube.com/watch?v=CHsRy4gl6hk-------------------------------------
 def get_scam_scores_from_chatgpt(prompt):
     client = OpenAI(
@@ -79,7 +92,7 @@ def get_scam_scores_from_chatgpt(prompt):
         input=prompt
     )
 
-    print(response.output_text)
+    return response.output_text
 
 def update_scam_risk_score_column(conn):
     cursor = conn.cursor()
@@ -102,7 +115,7 @@ def update_scam_risk_score_column(conn):
 
         # generate batches of prompts for processing with GPT
         batches = []
-        current_batch = SYSTEM_PROMPT
+        current_batch = ""
 
         for row in rows:
             current_listing = format_listing_for_prompt(row)
@@ -110,34 +123,43 @@ def update_scam_risk_score_column(conn):
                 current_batch += current_listing
             else:
                 batches.append(current_batch)
-                current_batch = SYSTEM_PROMPT + current_listing
+                current_batch = current_listing
         
         # Add the last batch if it has listings
-        if count_tokens(current_batch) > count_tokens(SYSTEM_PROMPT):
+        if len(current_batch) > 0:
             batches.append(current_batch)
 
         # Process each batch with ChatGPT
         for batch in batches:
             # Call the ChatGPT API
-            response = get_scam_scores_from_chatgpt(batch)
+            response = get_scam_scores_from_chatgpt(SYSTEM_PROMPT + batch)
             # Parse the JSON response
-            scam_scores = json.loads(response)
+            
+            if not response:
+                print("No response from ChatGPT.")
+            else:
+                try:
+                    # Attempt to parse the response as JSON
+                    cleaned_response = clean_gpt_json_response(response)
+                    scam_scores = json.loads(cleaned_response)
 
-            # Update the 'scan_risk_score' column for each item
-            for item in scam_scores:
-                update_query = """
-                    UPDATE ebay_listings
-                    SET scam_risk_score = %s,
-                        scam_risk_score_explanation = %s
-                    WHERE item_id = %s;
-                """
-                cursor.execute(update_query, (item['scam_risk_score'], item['explanation'], item['item_id']))
-
+                    # Update the 'scam_risk_score' column for each item
+                    for item in scam_scores:
+                        update_query = """
+                            UPDATE ebay_listings
+                            SET scam_risk_score = %s,
+                                scam_risk_score_explanation = %s
+                            WHERE item_id = %s;
+                        """
+                        cursor.execute(update_query, (item['scam_risk_score'], item['explanation'], item['item_id']))
+                except json.JSONDecodeError:
+                    print(f"Failed to decode JSON response: {response}")
+                                
         # Commit the changes to the database
         conn.commit()
 
     except Exception as e:
         conn.rollback()
-        print(f"Error updating 'scan_risk_score' column: {e}")
+        print(f"Error updating 'scam_risk_score' column: {e}")
     finally:
         cursor.close()
