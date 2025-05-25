@@ -31,7 +31,7 @@ const Header: React.FC = () => {
 
         <nav className="nav-buttons">
           <button className="nav-btn" onClick={handleHomeClick}>
-            Home
+            Listings
           </button>
           <button className="nav-btn" onClick={handleAboutClick}>
             About
