@@ -2,6 +2,7 @@ import hashlib
 from flask import Blueprint, request, jsonify
 import os
 from dotenv import load_dotenv
+from flask import send_from_directory, current_app
 
 load_dotenv()
 
@@ -14,6 +15,9 @@ frontend_bp = Blueprint('frontend', __name__)
 # https://developer.ebay.com/marketplace-account-deletion
 VERIFICATION_TOKEN = os.getenv('VERIFICATION_TOKEN')
 ENDPOINT_URL = os.getenv('ENDPOINT_URL')
+
+# Define allowed file extensions for security
+ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot'}
 
 @notifications_bp.route('/ebay/notifications', methods=['GET', 'POST'])
 def ebay_notifications():
@@ -43,10 +47,23 @@ def ebay_notifications():
             return jsonify({"error": "Failed to process notification"}), 500
         
 
-# Add a root route for the homepage
-@frontend_bp.route('/')
-def home():
-    return """
-    <h1>Welcome to MeltWise!\n
-    Development in Progress</h1>
-    """
+@frontend_bp.route('/', defaults={'path': ''})
+@frontend_bp.route('/<path:path>')
+def serve_react_app(path):
+    static_folder = current_app.static_folder
+    
+    # If someone asks for a specific file, check if it's allowed
+    if path:
+        # Get file extension
+        _, ext = os.path.splitext(path.lower())
+        
+        # Check if extension is allowed
+        if ext not in ALLOWED_EXTENSIONS:
+            return send_from_directory(static_folder, 'index.html')
+            
+        # Check if file exists and serve it
+        if os.path.exists(os.path.join(static_folder, path)):
+            return send_from_directory(static_folder, path)
+    
+    # Default: serve the React app
+    return send_from_directory(static_folder, 'index.html')

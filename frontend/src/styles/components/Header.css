@@ -1,0 +1,72 @@
+/* Style the main header container */
+.header {
+  background-color: none;              /* White background */
+  margin-top: 1rem;                             /* Stick to the very top */
+  z-index: 100;                          /* Make sure header appears above other content */
+  width: 100%;                           /* Take up full width of screen */
+}
+
+/* Style the inner container that holds logo and buttons */
+.header-container {
+  max-width: 1200px;                     /* Don't get wider than 1200px on big screens */
+  margin: 0 auto;                        /* Center the container horizontally */
+  padding: 1rem 2rem;                    /* Add space inside: 1rem top/bottom, 2rem left/right */
+  display: flex;                         /* Use flexbox layout */
+  justify-content: space-between;        /* Put logo on far left, buttons on far right */
+  align-items: center;                   /* Center everything vertically */
+}
+
+/* Style the left side that contains logo and title */
+.logo-section {
+  display: flex;                         /* Use flexbox to arrange logo and title side by side */
+  align-items: center;                   /* Center logo and title vertically */
+  gap: 0.5rem;                          /* Add small space between logo and title */
+}
+
+/* Style the logo image */
+.logo {
+  height: 60px;                          /* Set logo height to 40 pixels */
+  width: auto;                           /* Let width adjust automatically to maintain proportions */
+}
+
+/* Style the container that holds all navigation buttons */
+.nav-buttons {
+  display: flex;                         /* Arrange buttons side by side */
+  gap: 1rem;                            /* Add space between each button */
+}
+
+/* Style each individual navigation button */
+.nav-btn {
+  background: none;                      /* No background color (transparent) */
+  color: #ffffff;                       /* Blue text color */
+  border: none;
+  padding: 0.5rem 1rem;                 /* Space inside button: 0.5rem top/bottom, 1rem left/right */
+  cursor: pointer;                      /* Show hand cursor when hovering */
+  font-size: 1.2rem;                     /* Normal text size */
+  transition: all 0.3s ease;           /* Smooth animation when hovering (0.3 seconds) */
+}
+
+/* Style buttons when user hovers over them */
+.nav-btn:hover {
+    transform: scale(1.1);          /* Slightly enlarge button on hover */
+}
+
+/* Media query: Apply these styles only on mobile screens (768px wide or smaller) */
+@media (max-width: 768px) {
+  
+  /* Make header container more compact on mobile */
+  .header-container {
+    padding: 0.5rem 1rem;              /* Less padding on mobile */
+  }
+  
+  /* Make buttons closer together on mobile */
+  .nav-buttons {
+    gap: 0.5rem;                       /* Less space between buttons */
+  }
+  
+  /* Make buttons smaller on mobile */
+  .nav-btn {
+    padding: 0.4rem 0.8rem;            /* Smaller button padding */
+    font-size: 0.9rem;                 /* Slightly smaller text */
+  }
+}
