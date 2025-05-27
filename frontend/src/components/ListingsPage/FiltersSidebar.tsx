@@ -91,3 +91,5 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
 };
 
 export default FiltersSidebar;
+
+// https://www.youtube.com/watch?v=Kx8XlKRBZx8

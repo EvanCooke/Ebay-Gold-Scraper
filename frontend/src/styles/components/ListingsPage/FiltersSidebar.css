@@ -1,5 +1,5 @@
 .filters-sidebar {
-  width: 300px; /* Fixed width for the sidebar */
+  width: 160px; /* Fixed width for the sidebar */
   padding: 40px;
   padding-top: 100px;
   margin-left: 15vw;
@@ -8,17 +8,43 @@
 }
 .filters-sidebar h2 {
   margin-top: 0;
+  margin-bottom: 40px;
 }
 .filters-sidebar div {
-  margin-bottom: 15px;
+  margin-bottom: 35px;
 }
 .filters-sidebar label {
-  display: block;
+  display: inline;
   margin-bottom: 5px;
 }
 .filters-sidebar input[type="range"] {
   width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: white;
+  outline: none;
 }
+
+.filters-sidebar input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.filters-sidebar input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+}
+
 .filters-sidebar input[type="checkbox"] {
-  margin-right: 5px;
+  margin-right: 12px;
 }

@@ -1,0 +1,34 @@
+.listings-area {
+  flex-grow: 1;
+  padding: 20px;
+  background-color: #1e1e1e;
+  color: white;
+  overflow-y: auto;
+  height: calc(100vh - 60px); /* Adjust based on your header height */
+}
+
+.update-info {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.listings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  justify-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .listings-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .listings-area {
+    padding: 15px;
+  }
+}

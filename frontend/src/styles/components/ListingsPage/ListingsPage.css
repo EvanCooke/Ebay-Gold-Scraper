@@ -1,0 +1,5 @@
+.listings-page-container {
+  display: flex;
+  height: calc(100vh - 60px); /* Adjust based on header height */
+  overflow: hidden;
+}
