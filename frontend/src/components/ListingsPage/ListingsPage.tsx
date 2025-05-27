@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import FiltersSidebar from './FiltersSidebar';
 import ListingsArea from './ListingsArea';
 import type { Filters, ListingItem } from '../../types';
 import '../../styles/components/ListingsPage/ListingsPage.css';
-
 
 const ListingsPage: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({
@@ -17,31 +16,8 @@ const ListingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data for now - replace with API call later
-  // useEffect(() => {
-  //   // Simulate API call
-  //   setTimeout(() => {
-  //     const mockListings: ListingItem[] = [
-  //       {
-  //         id: '1',
-  //         title: '14K Gold Chain Necklace',
-  //         description: 'Beautiful gold chain',
-  //         images: ['https://via.placeholder.com/300x200'],
-  //         price: 250,
-  //         meltValue: 320,
-  //         profit: 70,
-  //         scamRisk: 2,
-  //         ebayUrl: 'https://ebay.com/item/1'
-  //       },
-  //       // Add more mock data as needed
-  //     ];
-  //     setListings(mockListings);
-  //     setLoading(false);
-  //   }, 1000);
-  // }, []);
-
-  // Fetch listings from API
-  const fetchListings = async () => {
+  // Debounced fetch function
+  const fetchListings = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -69,20 +45,33 @@ const ListingsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Fetch listings when component mounts or filters change
-  useEffect(() => {
-    fetchListings();
   }, [filters]);
-  
+
+  // Debounce effect - wait 500ms after filters change before fetching
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchListings();
+    }, 500); // 500ms delay
+
+    // Cleanup function - cancels the timeout if filters change again
+    return () => clearTimeout(timeoutId);
+  }, [fetchListings]);
+
+  // Initial load - fetch immediately on component mount
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchListings();
+    }, 100); // Short delay for initial load
+    
+    return () => clearTimeout(timeoutId);
+  }, []); // Empty dependency array - runs once on mount
+
   const handleFilterChange = (filterName: keyof Filters, value: any) => {
     setFilters((prevFilters) => ({
       ...prevFilters,
       [filterName]: value,
     }));
   };
-
 
   return (
     <div className="listings-page-container">

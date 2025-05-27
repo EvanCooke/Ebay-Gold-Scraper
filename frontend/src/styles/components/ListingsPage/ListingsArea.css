@@ -1,7 +1,7 @@
 .listings-area {
   flex-grow: 1;
   padding: 20px;
-  background-color: #1e1e1e;
+  background-color: #0b131b;
   color: white;
   overflow-y: auto;
   height: calc(100vh - 60px); /* Adjust based on your header height */
