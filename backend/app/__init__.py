@@ -1,5 +1,5 @@
 from flask import Flask
-from backend.app.routes import notifications_bp, frontend_bp
+from .routes import notifications_bp, frontend_bp
 import os
 from dotenv import load_dotenv
 

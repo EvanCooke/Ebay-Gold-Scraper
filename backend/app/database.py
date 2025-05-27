@@ -89,10 +89,13 @@ def create_tables(conn):
                 metal TEXT,
                 total_carat_weight TEXT,
                 metal_purity TEXT,      
-                gold BOOLEAN
+                is_gold BOOLEAN,
                 weight FLOAT,
                 purity INT,
-
+                melt_value DECIMAL,
+                profit DECIMAL,
+                scam_risk_score INTEGER,
+                scam_risk_score_explanation TEXT
             )
         """)
 
@@ -254,6 +257,104 @@ def clear_tables(conn):
     finally:
         cursor.close()
 
+def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_risk_max=None, returns_accepted=None):
+    """
+    Fetches listings from the database with optional filters.
+    
+    Args:
+        conn: Database connection object
+        profit_min: Minimum profit percentage 
+        melt_value_max: Maximum melt value
+        scam_risk_max: Maximum scam risk score
+        returns_accepted: Boolean filter for returns accepted
+    
+    Returns:
+        List of dictionaries containing listing data
+    """
+    if conn is None:
+        return []
+    
+    cursor = conn.cursor()
+    try:
+        # Base query - only get gold listings with required data
+        base_query = """
+            SELECT 
+                item_id, title, description, price, currency,
+                seller_username, seller_feedback_score, feedback_percent,
+                image_url, item_url, top_rated_buying_experience,
+                returns_accepted, weight, purity, melt_value, profit,
+                scam_risk_score
+            FROM ebay_listings 
+            WHERE is_gold = TRUE 
+                AND weight IS NOT NULL 
+                AND purity IS NOT NULL 
+                AND melt_value IS NOT NULL 
+                AND profit IS NOT NULL
+        """
+        
+        # Build WHERE conditions and parameters
+        conditions = []
+        params = []
+        
+        if profit_min is not None:
+            conditions.append("(profit / price) * 100 >= %s")
+            params.append(profit_min)
+            
+        if melt_value_max is not None:
+            conditions.append("melt_value <= %s")
+            params.append(melt_value_max)
+            
+        if scam_risk_max is not None:
+            conditions.append("scam_risk_score <= %s")
+            params.append(scam_risk_max)
+            
+        if returns_accepted is not None:
+            conditions.append("returns_accepted = %s")
+            params.append(returns_accepted)
+        
+        # Combine query with conditions
+        if conditions:
+            query = base_query + " AND " + " AND ".join(conditions)
+        else:
+            query = base_query
+            
+        # Add ordering
+        query += " ORDER BY profit DESC LIMIT 100"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        # Convert to list of dictionaries
+        listings = []
+        for row in rows:
+            listings.append({
+                'id': row[0],
+                'title': row[1],
+                'description': row[2] or '',
+                'images': [row[8]] if row[8] else ['https://via.placeholder.com/300x200'],  # image_url
+                'price': float(row[3]),
+                'currency': row[4],
+                'sellerUsername': row[5],
+                'sellerFeedbackScore': row[6],
+                'feedbackPercent': float(row[7]) if row[7] else 0,
+                'ebayUrl': row[9],
+                'topRatedBuyingExperience': row[10],
+                'returnsAccepted': row[11],
+                'weight': float(row[12]) if row[12] else 0,
+                'purity': row[13] if row[13] else 0,
+                'meltValue': float(row[14]) if row[14] else 0,
+                'profit': float(row[15]) if row[15] else 0,
+                'scamRisk': row[16] if row[16] else 5
+            })
+        
+        return listings
+        
+    except Exception as e:
+        print(f"Error fetching listings: {e}")
+        return []
+    finally:
+        cursor.close()
+
 
 if __name__ == "__main__":
     conn = connect_to_db()
@@ -321,3 +422,5 @@ if __name__ == "__main__":
         conn.close()
     else:
         print("Failed to connect to the database")
+
+

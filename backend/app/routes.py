@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 import os
 from dotenv import load_dotenv
 from flask import send_from_directory, current_app
+from .database import connect_to_db, get_listings_with_filters
 
 load_dotenv()
 
@@ -18,6 +19,58 @@ ENDPOINT_URL = os.getenv('ENDPOINT_URL')
 
 # Define allowed file extensions for security
 ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot'}
+
+@notifications_bp.route('/listings', methods=['GET'])
+def get_listings():
+    """
+    Get filtered listings from the database
+    Query parameters:
+    - profit: minimum profit percentage (optional)
+    - melt_value: maximum melt value (optional) 
+    - scam_risk: maximum scam risk score (optional)
+    - returns_accepted: true/false for returns accepted filter (optional)
+    """
+    try:
+        # Get query parameters
+        profit_min = request.args.get('profit', type=float)
+        melt_value_max = request.args.get('melt_value', type=float)
+        scam_risk_max = request.args.get('scam_risk', type=int)
+        returns_accepted = request.args.get('returns_accepted')
+        
+        # Convert returns_accepted string to boolean
+        if returns_accepted is not None:
+            returns_accepted = returns_accepted.lower() == 'true'
+        
+        # Connect to database
+        conn = connect_to_db()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        # Fetch listings with filters
+        listings = get_listings_with_filters(
+            conn, 
+            profit_min=profit_min,
+            melt_value_max=melt_value_max, 
+            scam_risk_max=scam_risk_max,
+            returns_accepted=returns_accepted
+        )
+        
+        conn.close()
+        
+        return jsonify({
+            'listings': listings,
+            'count': len(listings),
+            'filters_applied': {
+                'profit_min': profit_min,
+                'melt_value_max': melt_value_max,
+                'scam_risk_max': scam_risk_max,
+                'returns_accepted': returns_accepted
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in get_listings endpoint: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @notifications_bp.route('/ebay/notifications', methods=['GET', 'POST'])
 def ebay_notifications():
