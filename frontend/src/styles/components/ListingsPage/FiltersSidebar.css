@@ -1,0 +1,24 @@
+.filters-sidebar {
+  width: 300px; /* Fixed width for the sidebar */
+  padding: 40px;
+  padding-top: 100px;
+  margin-left: 15vw;
+  background: none;
+  color: white;
+}
+.filters-sidebar h2 {
+  margin-top: 0;
+}
+.filters-sidebar div {
+  margin-bottom: 15px;
+}
+.filters-sidebar label {
+  display: block;
+  margin-bottom: 5px;
+}
+.filters-sidebar input[type="range"] {
+  width: 100%;
+}
+.filters-sidebar input[type="checkbox"] {
+  margin-right: 5px;
+}

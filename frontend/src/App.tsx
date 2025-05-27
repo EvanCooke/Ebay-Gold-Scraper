@@ -3,6 +3,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import Header from './components/Header'
+import ListingsPage from './components/ListingsPage/ListingsPage'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -10,7 +11,7 @@ function App() {
   return (
     <>
       <Header />
-
+      <ListingsPage />
       
       {/* <div>
         <a href="https://vite.dev" target="_blank">
