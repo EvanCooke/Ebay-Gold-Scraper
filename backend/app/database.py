@@ -290,6 +290,7 @@ def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_r
                 AND purity IS NOT NULL 
                 AND melt_value IS NOT NULL 
                 AND profit IS NOT NULL
+                AND (profit / price) * 100 <= 10
         """
         
         # Build WHERE conditions and parameters
