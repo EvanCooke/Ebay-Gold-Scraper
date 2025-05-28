@@ -23,6 +23,12 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
     onFilterChange(name as keyof Filters, type === 'checkbox' ? checked : parseFloat(value) || 0);
   };
 
+  // Handle dropdown changes
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    onFilterChange(name as keyof Filters, value);
+  };
+
   // Simple function that just passes slider changes up to the parent
   const handleSliderChange = (name: keyof Filters, value: number) => {
     onFilterChange(name, value);
@@ -30,10 +36,34 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
 
   // Check if profit filter is effectively disabled (0%)
   const isProfitDisabled = filters.profit === 0;
+  // Check if scam risk filter is effectively disabled (0)
+  const isScamRiskDisabled = filters.scamRisk === 0;
 
   return (
     <aside className="filters-sidebar">
       <h2>Filters</h2>
+
+      <div>
+        <label htmlFor="sortBy">Sort By:</label>
+        <select
+          id="sortBy"
+          name="sortBy"
+          value={filters.sortBy}
+          onChange={handleSelectChange}
+        >
+          <option value="profit_desc">Profit (Highest to Lowest)</option>
+          <option value="profit_asc">Profit (Lowest to Highest)</option>
+          <option value="price_desc">Price (Highest to Lowest)</option>
+          <option value="price_asc">Price (Lowest to Highest)</option>
+          <option value="melt_value_desc">Melt Value (Highest to Lowest)</option>
+          <option value="melt_value_asc">Melt Value (Lowest to Highest)</option>
+          <option value="scam_risk_asc">Scam Risk (Lowest to Highest)</option>
+          <option value="scam_risk_desc">Scam Risk (Highest to Lowest)</option>
+          <option value="seller_feedback_desc">Seller Feedback (Highest to Lowest)</option>
+          <option value="seller_feedback_asc">Seller Feedback (Lowest to Highest)</option>
+        </select>
+      </div>
+
       <div>
         <label 
           htmlFor="profit" 
@@ -52,30 +82,23 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
           className={isProfitDisabled ? 'disabled-filter' : ''}
         />
       </div>
+    
       <div>
-        <label htmlFor="meltValue">Melt Value: &lt;${filters.meltValue}</label>
-        {/* <Slider name="meltValue" value={filters.meltValue} onChange={(val) => handleSliderChange('meltValue', val)} min={0} max={1000} /> */}
-         <input
-            type="range"
-            id="meltValue"
-            name="meltValue"
-            min="0"
-            max="1000" // Adjust max as needed
-            value={filters.meltValue}
-            onChange={(e) => handleSliderChange('meltValue', parseInt(e.target.value))}
-        />
-      </div>
-      <div>
-        <label htmlFor="scamRisk">Scam Risk: &lt;{filters.scamRisk}</label>
-        {/* <Slider name="scamRisk" value={filters.scamRisk} onChange={(val) => handleSliderChange('scamRisk', val)} min={0} max={10} /> */}
+        <label 
+          htmlFor="scamRisk"
+          className={isScamRiskDisabled ? 'disabled-filter' : ''}
+        >
+          Scam Risk: {isScamRiskDisabled ? 'Any' : `${filters.scamRisk}`}
+        </label>
         <input
             type="range"
             id="scamRisk"
             name="scamRisk"
             min="0"
-            max="10" // Adjust max as needed
+            max="10"
             value={filters.scamRisk}
             onChange={(e) => handleSliderChange('scamRisk', parseInt(e.target.value))}
+            className={isScamRiskDisabled ? 'disabled-filter' : ''}
         />
       </div>
       <div>

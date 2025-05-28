@@ -2,7 +2,7 @@
   width: 160px; /* Fixed width for the sidebar */
   padding: 40px;
   padding-top: 100px;
-  margin-left: 15vw;
+  margin-left: 10vw;
   background: none;
   color: white;
 }
@@ -49,6 +49,21 @@
 
 .filters-sidebar input[type="checkbox"] {
   margin-right: 12px;
+}
+
+.filters-sidebar select {
+  width: 100%;
+  padding: 8px;
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.filters-sidebar select:focus {
+  outline: none;
+  border-color: #777;
 }
 
 /* New styles for disabled profit filter */

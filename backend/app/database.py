@@ -257,16 +257,16 @@ def clear_tables(conn):
     finally:
         cursor.close()
 
-def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_risk_max=None, returns_accepted=None):
+def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns_accepted=None, sort_by='profit_desc'):
     """
     Fetches listings from the database with optional filters.
     
     Args:
         conn: Database connection object
-        profit_min: Minimum profit percentage 
-        melt_value_max: Maximum melt value
-        scam_risk_max: Maximum scam risk score
+        profit_min: Minimum profit percentage (None or 0 to disable filter)
+        scam_risk_max: Maximum scam risk score (None or 0 to disable filter)
         returns_accepted: Boolean filter for returns accepted
+        sort_by: Sort order for results
     
     Returns:
         List of dictionaries containing listing data
@@ -297,15 +297,13 @@ def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_r
         conditions = []
         params = []
         
-        if profit_min is not None:
+        # Only apply profit filter if profit_min is greater than 0
+        if profit_min is not None and profit_min > 0:
             conditions.append("(profit / price) * 100 >= %s")
             params.append(profit_min)
             
-        if melt_value_max is not None:
-            conditions.append("melt_value <= %s")
-            params.append(melt_value_max)
-            
-        if scam_risk_max is not None:
+        # Only apply scam risk filter if scam_risk_max is greater than 0
+        if scam_risk_max is not None and scam_risk_max > 0:
             conditions.append("scam_risk_score <= %s")
             params.append(scam_risk_max)
             
@@ -319,9 +317,23 @@ def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_r
         else:
             query = base_query
             
-        # Add ordering
-        query += " ORDER BY profit DESC LIMIT 100"
+        # Add sorting
+        sort_mapping = {
+            'profit_desc': 'profit DESC',
+            'profit_asc': 'profit ASC',
+            'price_desc': 'price DESC',
+            'price_asc': 'price ASC',
+            'melt_value_desc': 'melt_value DESC',
+            'melt_value_asc': 'melt_value ASC',
+            'scam_risk_asc': 'scam_risk_score ASC',
+            'scam_risk_desc': 'scam_risk_score DESC',
+            'seller_feedback_desc': 'seller_feedback_score DESC',
+            'seller_feedback_asc': 'seller_feedback_score ASC'
+        }
         
+        order_clause = sort_mapping.get(sort_by, 'profit DESC')
+        query += f" ORDER BY {order_clause} LIMIT 100"
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
@@ -332,7 +344,7 @@ def get_listings_with_filters(conn, profit_min=None, melt_value_max=None, scam_r
                 'id': row[0],
                 'title': row[1],
                 'description': row[2] or '',
-                'images': [row[8]] if row[8] else ['https://via.placeholder.com/300x200'],  # image_url
+                'images': [row[8]] if row[8] else ['https://via.placeholder.com/300x200'],
                 'price': float(row[3]),
                 'currency': row[4],
                 'sellerUsername': row[5],

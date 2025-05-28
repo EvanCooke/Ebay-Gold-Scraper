@@ -26,18 +26,20 @@ def get_listings():
     Get filtered listings from the database
     Query parameters:
     - profit: minimum profit percentage (optional)
-    - melt_value: maximum melt value (optional) 
     - scam_risk: maximum scam risk score (optional)
     - returns_accepted: true/false for returns accepted filter (optional)
+    - sort_by: sort order (optional)
     """
     try:
         # Get query parameters
         profit_min = request.args.get('profit', type=float)
-        melt_value_max = request.args.get('melt_value', type=float)
         scam_risk_max = request.args.get('scam_risk', type=int)
         returns_accepted = request.args.get('returns_accepted')
-        
+        sort_by = request.args.get('sort_by', default='profit_desc')
+
+
         # Convert returns_accepted string to boolean
+        # this is probably not needed I think?
         if returns_accepted is not None:
             returns_accepted = returns_accepted.lower() == 'true'
         
@@ -50,9 +52,9 @@ def get_listings():
         listings = get_listings_with_filters(
             conn, 
             profit_min=profit_min,
-            melt_value_max=melt_value_max, 
             scam_risk_max=scam_risk_max,
-            returns_accepted=returns_accepted
+            returns_accepted=returns_accepted,
+            sort_by=sort_by
         )
         
         conn.close()
@@ -62,9 +64,9 @@ def get_listings():
             'count': len(listings),
             'filters_applied': {
                 'profit_min': profit_min,
-                'melt_value_max': melt_value_max,
                 'scam_risk_max': scam_risk_max,
-                'returns_accepted': returns_accepted
+                'returns_accepted': returns_accepted,
+                'sort_by': sort_by
             }
         }), 200
         

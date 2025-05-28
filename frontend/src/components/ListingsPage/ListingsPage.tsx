@@ -6,10 +6,10 @@ import '../../styles/components/ListingsPage/ListingsPage.css';
 
 const ListingsPage: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({
-    profit: 3,
-    meltValue: 450,
-    scamRisk: 4,
+    profit: 0,
+    scamRisk: 0,
     returnsAccepted: false,
+    sortBy: 'profit_desc'
   });
 
   const [listings, setListings] = useState<ListingItem[]>([]);
@@ -25,10 +25,11 @@ const ListingsPage: React.FC = () => {
       // Build query parameters
       const params = new URLSearchParams();
       if (filters.profit > 0) params.append('profit', filters.profit.toString());
-      if (filters.meltValue > 0) params.append('melt_value', filters.meltValue.toString());
-      if (filters.scamRisk < 10) params.append('scam_risk', filters.scamRisk.toString());
+      if (filters.scamRisk > 0) params.append('scam_risk', filters.scamRisk.toString());
       if (filters.returnsAccepted) params.append('returns_accepted', 'true');
+      params.append('sort_by', filters.sortBy);
       
+
       const response = await fetch(`/api/listings?${params.toString()}`);
       
       if (!response.ok) {
