@@ -16,6 +16,7 @@
 .filters-sidebar label {
   display: inline;
   margin-bottom: 5px;
+  transition: opacity 0.3s ease;
 }
 .filters-sidebar input[type="range"] {
   width: 100%;
@@ -24,6 +25,7 @@
   height: 3px;
   background: white;
   outline: none;
+  transition: opacity 0.3s ease;
 }
 
 .filters-sidebar input[type="range"]::-webkit-slider-thumb {
@@ -47,4 +49,9 @@
 
 .filters-sidebar input[type="checkbox"] {
   margin-right: 12px;
+}
+
+/* New styles for disabled profit filter */
+.disabled-filter {
+  opacity: 0.5 !important;
 }

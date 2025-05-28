@@ -28,22 +28,28 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
     onFilterChange(name, value);
   };
 
+  // Check if profit filter is effectively disabled (0%)
+  const isProfitDisabled = filters.profit === 0;
 
   return (
     <aside className="filters-sidebar">
       <h2>Filters</h2>
       <div>
-        <label htmlFor="profit">Profit: {filters.profit}%</label>
-        {/* Assuming a custom Slider component or a library */}
-        {/* <Slider name="profit" value={filters.profit} onChange={(val) => handleSliderChange('profit', val)} min={0} max={100} /> */}
+        <label 
+          htmlFor="profit" 
+          className={isProfitDisabled ? 'disabled-filter' : ''}
+        >
+          Profit: {isProfitDisabled ? 'Any' : `${filters.profit}%`}
+        </label>
         <input
-            type="range"
-            id="profit"
-            name="profit"
-            min="0"
-            max="100" // Adjust max as needed
-            value={filters.profit}
-            onChange={(e) => handleSliderChange('profit', parseInt(e.target.value))}
+          type="range"
+          id="profit"
+          name="profit"
+          min="0"
+          max="10"
+          value={filters.profit}
+          onChange={(e) => handleSliderChange('profit', parseInt(e.target.value))}
+          className={isProfitDisabled ? 'disabled-filter' : ''}
         />
       </div>
       <div>
