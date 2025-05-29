@@ -5,7 +5,7 @@ import ListingsPage from '../components/ListingsPage/ListingsPage';
 const Listings: React.FC = () => {
   return (
     <>
-      <Header currentPage="listings" />
+      <Header />
       <ListingsPage />
     </>
   )

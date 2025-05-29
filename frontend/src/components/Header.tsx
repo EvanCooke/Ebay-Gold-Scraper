@@ -1,13 +1,27 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Header.css';
 import logo from '../assets/logo.png';
 
-interface HeaderProps {
-  currentPage: string;
-  onPageChange: (page: string) => void;
-}
+const Header: React.FC = () => {
+  const location = useLocation();
+  
+  const getCurrentPage = () => {
+    switch (location.pathname) {
+      case '/':
+      case '/listings':
+        return 'listings';
+      case '/buying-guide':
+        return 'buying-guide';
+      case '/contact':
+        return 'contact';
+      default:
+        return 'listings';
+    }
+  };
 
-const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
+  const currentPage = getCurrentPage();
+
   return (
     <header className="header">
       <div className="header-container">
@@ -20,24 +34,24 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
         </div>
 
         <nav className="nav-buttons">
-          <button 
+          <Link 
+            to="/listings"
             className={`nav-btn ${currentPage === 'listings' ? 'active' : ''}`}
-            onClick={() => onPageChange('listings')}
           >
             Listings
-          </button>
-          <button 
+          </Link>
+          <Link 
+            to="/buying-guide"
             className={`nav-btn ${currentPage === 'buying-guide' ? 'active' : ''}`}
-            onClick={() => onPageChange('buying-guide')}
           >
             Buying Guide
-          </button>
-          <button 
+          </Link>
+          <Link 
+            to="/contact"
             className={`nav-btn ${currentPage === 'contact' ? 'active' : ''}`}
-            onClick={() => onPageChange('contact')}
           >
             Contact
-          </button>
+          </Link>
         </nav>
       </div>
     </header>

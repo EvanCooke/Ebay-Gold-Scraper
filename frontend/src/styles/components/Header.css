@@ -44,11 +44,18 @@
   cursor: pointer;                      /* Show hand cursor when hovering */
   font-size: 1.2rem;                     /* Normal text size */
   transition: all 0.3s ease;           /* Smooth animation when hovering (0.3 seconds) */
+  text-decoration: none; /* Remove underline from links */
+  display: inline-block; /* Make links behave like buttons */
 }
 
 /* Style buttons when user hovers over them */
 .nav-btn:hover {
     transform: scale(1.1);          /* Slightly enlarge button on hover */
+}
+
+.nav-btn.active {
+  color: #e2e2e2; /* Add active state styling */
+  font-weight: bold;
 }
 
 /* Media query: Apply these styles only on mobile screens (768px wide or smaller) */

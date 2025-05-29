@@ -4,10 +4,10 @@ import Header from '../components/Header';
 const Contact: React.FC = () => {
   return (
     <>
-      <Header currentPage="contact" />
+      <Header />
       <div style={{ padding: '40px', color: 'white', textAlign: 'center' }}>
-        <h1>Contact Us</h1>
-        <p>Get in touch with our team...</p>
+        <h1>Buying Guide</h1>
+        <p>Explain here</p>
       </div>
     </>
   );
