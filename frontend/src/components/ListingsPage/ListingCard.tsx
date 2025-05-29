@@ -82,23 +82,13 @@ const ListingCard: React.FC<ListingCardProps> = ({ item }) => {
           </div>
 
           <div className="detail-item">
-            <span className="label">Purity:</span>
-            <span className="value">{item.purity}k</span>
-          </div>
-          
-          <div className="detail-item">
-            <span className="label">Weight:</span>
-            <span className="value">{item.weight}g</span>
+            <span className="label">Purity, Weight:</span>
+            <span className="value">{item.purity}k, {item.weight}g</span>
           </div>
           
           <div className="detail-item">
             <span className="label">Seller Feedback:</span>
-            <span className="value">{item.sellerFeedbackScore?.toLocaleString() || 'N/A'}</span>
-          </div>
-          
-          <div className="detail-item">
-            <span className="label">Feedback %:</span>
-            <span className="value">{item.feedbackPercent ? `${item.feedbackPercent}%` : 'N/A'}</span>
+            <span className="value">{item.sellerFeedbackScore?.toLocaleString() || 'N/A'} ({item.feedbackPercent ? `${item.feedbackPercent}%` : 'N/A'})</span>
           </div>
           
           <div className="detail-item">

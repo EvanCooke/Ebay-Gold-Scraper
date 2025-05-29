@@ -23,12 +23,14 @@ ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '
 @notifications_bp.route('/listings', methods=['GET'])
 def get_listings():
     """
-    Get filtered listings from the database
+    Get filtered listings from the database with pagination
     Query parameters:
     - profit: minimum profit percentage (optional)
     - scam_risk: maximum scam risk score (optional)
     - returns_accepted: true/false for returns accepted filter (optional)
     - sort_by: sort order (optional)
+    - page: page number (default: 1)
+    - per_page: items per page (default: 20)
     """
     try:
         # Get query parameters
@@ -36,6 +38,8 @@ def get_listings():
         scam_risk_max = request.args.get('scam_risk', type=int)
         returns_accepted = request.args.get('returns_accepted')
         sort_by = request.args.get('sort_by', default='profit_desc')
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=20, type=int)
 
 
         # Convert returns_accepted string to boolean
@@ -49,19 +53,21 @@ def get_listings():
             return jsonify({'error': 'Database connection failed'}), 500
         
         # Fetch listings with filters
-        listings = get_listings_with_filters(
+        result = get_listings_with_filters(
             conn, 
             profit_min=profit_min,
             scam_risk_max=scam_risk_max,
             returns_accepted=returns_accepted,
-            sort_by=sort_by
+            sort_by=sort_by,
+            page=page,
+            per_page=per_page
         )
         
         conn.close()
         
         return jsonify({
-            'listings': listings,
-            'count': len(listings),
+            'listings': result['listings'],
+            'pagination': result['pagination'],
             'filters_applied': {
                 'profit_min': profit_min,
                 'scam_risk_max': scam_risk_max,

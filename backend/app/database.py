@@ -257,7 +257,7 @@ def clear_tables(conn):
     finally:
         cursor.close()
 
-def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns_accepted=None, sort_by='profit_desc'):
+def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns_accepted=None, sort_by='profit_desc', page=1, per_page=20):
     """
     Fetches listings from the database with optional filters.
     
@@ -272,10 +272,23 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
         List of dictionaries containing listing data
     """
     if conn is None:
-        return []
+        return {'listings': [], 'pagination': {'currentPage': 1, 'totalPages': 0, 'totalItems': 0, 'itemsPerPage': per_page}}
+
     
     cursor = conn.cursor()
     try:
+        # Base query for counting total items
+        count_query = """
+            SELECT COUNT(*)
+            FROM ebay_listings 
+            WHERE is_gold = TRUE 
+                AND weight IS NOT NULL 
+                AND purity IS NOT NULL 
+                AND melt_value IS NOT NULL 
+                AND profit IS NOT NULL
+                AND (profit / price) * 100 <= 10
+        """
+
         # Base query - only get gold listings with required data
         base_query = """
             SELECT 
@@ -311,11 +324,21 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
             conditions.append("returns_accepted = %s")
             params.append(returns_accepted)
         
-        # Combine query with conditions
+        # # Combine query with conditions
+        # if conditions:
+        #     query = base_query + " AND " + " AND ".join(conditions)
+        # else:
+        #     query = base_query
+        # Add conditions to both queries
         if conditions:
-            query = base_query + " AND " + " AND ".join(conditions)
-        else:
-            query = base_query
+            condition_string = " AND " + " AND ".join(conditions)
+            count_query += condition_string
+            base_query += condition_string
+
+        # Get total count
+        cursor.execute(count_query, params)
+        total_items = cursor.fetchone()[0]
+        total_pages = (total_items + per_page - 1) // per_page  # Ceiling division
             
         # Add sorting
         sort_mapping = {
@@ -332,7 +355,10 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
         }
         
         order_clause = sort_mapping.get(sort_by, 'profit DESC')
-        query += f" ORDER BY {order_clause} LIMIT 100"
+        offset = (page - 1) * per_page
+
+        query = f"{base_query} ORDER BY {order_clause} LIMIT %s OFFSET %s"
+        params.extend([per_page, offset])
 
         cursor.execute(query, params)
         rows = cursor.fetchall()
@@ -361,11 +387,19 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
                 'scamRiskExplanation': row[17] or ''
             })
         
-        return listings
+        return {
+            'listings': listings,
+            'pagination': {
+                'currentPage': page,
+                'totalPages': total_pages,
+                'totalItems': total_items,
+                'itemsPerPage': per_page
+            }
+        }
         
     except Exception as e:
         print(f"Error fetching listings: {e}")
-        return []
+        return {'listings': [], 'pagination': {'currentPage': 1, 'totalPages': 0, 'totalItems': 0, 'itemsPerPage': per_page}}
     finally:
         cursor.close()
 

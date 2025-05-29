@@ -24,3 +24,10 @@ export interface Filters {
   returnsAccepted: boolean;
   sortBy: string;
 }
+
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+}

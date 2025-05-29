@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import FiltersSidebar from './FiltersSidebar';
 import ListingsArea from './ListingsArea';
-import type { Filters, ListingItem } from '../../types';
+import type { Filters, ListingItem, PaginationInfo } from '../../types';
 import '../../styles/components/ListingsPage/ListingsPage.css';
 
 const ListingsPage: React.FC = () => {
@@ -13,11 +13,17 @@ const ListingsPage: React.FC = () => {
   });
 
   const [listings, setListings] = useState<ListingItem[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    itemsPerPage: 20
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Debounced fetch function
-  const fetchListings = useCallback(async () => {
+  const fetchListings = useCallback(async (page: number = 1) => {
     setLoading(true);
     setError(null);
     
@@ -28,6 +34,9 @@ const ListingsPage: React.FC = () => {
       if (filters.scamRisk > 0) params.append('scam_risk', filters.scamRisk.toString());
       if (filters.returnsAccepted) params.append('returns_accepted', 'true');
       params.append('sort_by', filters.sortBy);
+      params.append('page', page.toString());
+      params.append('per_page', '20');
+
       
 
       const response = await fetch(`/api/listings?${params.toString()}`);
@@ -38,6 +47,12 @@ const ListingsPage: React.FC = () => {
       
       const data = await response.json();
       setListings(data.listings || []);
+      setPagination(data.pagination || {
+        currentPage: 1,
+        totalPages: 0,
+        totalItems: 0,
+        itemsPerPage: 20
+      });
       
     } catch (err) {
       console.error('Error fetching listings:', err);
@@ -51,17 +66,17 @@ const ListingsPage: React.FC = () => {
   // Debounce effect - wait 500ms after filters change before fetching
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchListings();
+      fetchListings(1);
     }, 500); // 500ms delay
 
     // Cleanup function - cancels the timeout if filters change again
     return () => clearTimeout(timeoutId);
-  }, [fetchListings]);
+  }, [filters]);
 
   // Initial load - fetch immediately on component mount
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchListings();
+      fetchListings(1);
     }, 100); // Short delay for initial load
     
     return () => clearTimeout(timeoutId);
@@ -74,6 +89,10 @@ const ListingsPage: React.FC = () => {
     }));
   };
 
+  const handlePageChange = (page: number) => {
+    fetchListings(page);
+  };
+
   return (
     <div className="listings-page-container">
       <FiltersSidebar filters={filters} onFilterChange={handleFilterChange} />
@@ -81,7 +100,9 @@ const ListingsPage: React.FC = () => {
         listings={listings} 
         loading={loading}
         error={error}
-        onRetry={fetchListings}
+        pagination={pagination}
+        onRetry={() => fetchListings(pagination.currentPage)}
+        onPageChange={handlePageChange}
       />
     </div>
   );

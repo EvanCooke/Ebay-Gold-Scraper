@@ -110,6 +110,7 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({ filters, onFilterChange
           onChange={handleInputChange}
         />
         <label htmlFor="returnsAccepted">Returns Accepted</label>
+        <span className="recommended-label"><br />(recommended)</span>
       </div>
       {/* Basic styling for demonstration */}
       <style>{`

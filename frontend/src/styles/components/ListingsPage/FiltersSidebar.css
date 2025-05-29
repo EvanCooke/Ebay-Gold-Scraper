@@ -66,6 +66,13 @@
   border-color: #777;
 }
 
+.recommended-label {
+  color: #e4c464;
+  font-size: 0.8rem;
+  margin-left: 5px;
+  font-weight: 500;
+}
+
 /* New styles for disabled profit filter */
 .disabled-filter {
   opacity: 0.5 !important;
