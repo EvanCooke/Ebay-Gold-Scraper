@@ -2,41 +2,40 @@ import React from 'react';
 import '../styles/components/Header.css';
 import logo from '../assets/logo.png';
 
-// No need for props interface if you're not using any props
-const Header: React.FC = () => {
+interface HeaderProps {
+  currentPage: string;
+  onPageChange: (page: string) => void;
+}
 
-  const handleHomeClick = () => {
-    console.log('Home clicked!');
-  };
-
-  const handleAboutClick = () => {
-    console.log('About clicked!');
-  };
-
-  const handleContactClick = () => {
-    console.log('Contact clicked!');
-  };
-
+const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
   return (
     <header className="header">
       <div className="header-container">
         <div className="logo-section">
-          {/* Hardcoded logo - no props needed */}
           <img 
-            src={logo}                    // Direct import
-            alt="eBay Gold Scraper Logo"  // Hardcoded alt text
+            src={logo}
+            alt="eBay Gold Scraper Logo"
             className="logo"
           />
         </div>
 
         <nav className="nav-buttons">
-          <button className="nav-btn" onClick={handleHomeClick}>
+          <button 
+            className={`nav-btn ${currentPage === 'listings' ? 'active' : ''}`}
+            onClick={() => onPageChange('listings')}
+          >
             Listings
           </button>
-          <button className="nav-btn" onClick={handleAboutClick}>
-            About
+          <button 
+            className={`nav-btn ${currentPage === 'buying-guide' ? 'active' : ''}`}
+            onClick={() => onPageChange('buying-guide')}
+          >
+            Buying Guide
           </button>
-          <button className="nav-btn" onClick={handleContactClick}>
+          <button 
+            className={`nav-btn ${currentPage === 'contact' ? 'active' : ''}`}
+            onClick={() => onPageChange('contact')}
+          >
             Contact
           </button>
         </nav>
