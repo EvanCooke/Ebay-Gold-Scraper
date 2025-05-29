@@ -283,7 +283,7 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
                 seller_username, seller_feedback_score, feedback_percent,
                 image_url, item_url, top_rated_buying_experience,
                 returns_accepted, weight, purity, melt_value, profit,
-                scam_risk_score
+                scam_risk_score, scam_risk_score_explanation
             FROM ebay_listings 
             WHERE is_gold = TRUE 
                 AND weight IS NOT NULL 
@@ -357,7 +357,8 @@ def get_listings_with_filters(conn, profit_min=None, scam_risk_max=None, returns
                 'purity': row[13] if row[13] else 0,
                 'meltValue': float(row[14]) if row[14] else 0,
                 'profit': float(row[15]) if row[15] else 0,
-                'scamRisk': row[16] if row[16] else 5
+                'scamRisk': row[16] if row[16] else 5,
+                'scamRiskExplanation': row[17] or ''
             })
         
         return listings

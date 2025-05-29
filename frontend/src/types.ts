@@ -7,7 +7,15 @@ export interface ListingItem {
   meltValue: number;
   profit: number;
   scamRisk: number;
+  scamRiskExplanation: string;
   ebayUrl: string;
+  sellerUsername: string;
+  sellerFeedbackScore: number;
+  feedbackPercent: number;
+  topRatedBuyingExperience: boolean;
+  returnsAccepted: boolean;
+  weight: number;
+  purity: number;
 }
 
 export interface Filters {
