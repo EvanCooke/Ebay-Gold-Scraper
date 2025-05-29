@@ -1,0 +1,143 @@
+.buying-guide-container {
+  min-height: calc(100vh - 60px);
+  background-color: #0B131B;
+  color: white;
+  padding: 40px 20px;
+}
+
+.buying-guide-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.buying-guide-content h1 {
+  text-align: center;
+  margin-bottom: 40px;
+  color: white;
+  font-size: 2.5rem;
+}
+
+.disclaimer-section {
+  background: #2c2c34;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 40px;
+  border-left: 4px solid #F44336;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.disclaimer-section h2 {
+  color: #F44336;
+  margin-bottom: 15px;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.disclaimer-section p {
+  line-height: 1.6;
+  color: #ccc;
+  font-size: 1rem;
+}
+
+.details-section {
+  background: #2c2c34;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.details-section h2 {
+  color: #0066CC;
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+  border-bottom: 2px solid #0066CC;
+  padding-bottom: 10px;
+}
+
+.detail-item {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #444;;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.detail-item h3 {
+  color: #4CAF50;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-right: 40px;
+}
+
+.detail-item p {
+  line-height: 1.6;
+  color: #ccc;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.highlight {
+  background: rgba(76, 175, 80, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #4CAF50;
+  font-weight: 500;
+}
+
+.warning-highlight {
+  background: rgba(255, 193, 7, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #FFC107;
+  font-weight: 500;
+}
+
+.risk-scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+  padding: 10px;
+  background: #333;
+  border-radius: 4px;
+}
+
+.risk-low {
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.risk-medium {
+  color: #FFC107;
+  font-weight: 600;
+}
+
+.risk-high {
+  color: #F44336;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .buying-guide-container {
+    padding: 20px 15px;
+  }
+  
+  .disclaimer-section,
+  .details-section {
+    padding: 20px;
+  }
+  
+  .buying-guide-content h1 {
+    font-size: 2rem;
+  }
+  
+  .details-section h2 {
+    font-size: 1.5rem;
+  }
+}
