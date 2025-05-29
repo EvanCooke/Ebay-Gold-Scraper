@@ -79,6 +79,38 @@ def get_listings():
     except Exception as e:
         print(f"Error in get_listings endpoint: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+    
+@notifications_bp.route('/contact', methods=['POST'])
+def contact_form():
+    """
+    Handle contact form submissions
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('name') or not data.get('email') or not data.get('message'):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Here you can:
+        # 1. Send an email using a service like SendGrid, Mailgun, or SMTP
+        # 2. Save to database for admin review
+        # 3. Send to a webhook/notification service
+        
+        # Example: Log the contact form submission
+        print(f"Contact form submission:")
+        print(f"Name: {data.get('name')}")
+        print(f"Email: {data.get('email')}")
+        print(f"Subject: {data.get('subject')}")
+        print(f"Message: {data.get('message')}")
+        
+        # TODO: Implement actual email sending or database storage
+        
+        return jsonify({'message': 'Contact form submitted successfully'}), 200
+        
+    except Exception as e:
+        print(f"Error processing contact form: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @notifications_bp.route('/ebay/notifications', methods=['GET', 'POST'])
 def ebay_notifications():
