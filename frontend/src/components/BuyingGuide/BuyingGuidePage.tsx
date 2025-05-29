@@ -23,7 +23,7 @@ const BuyingGuidePage = () => {
         <section className="details-section">
           <h2>Listing Details</h2>
           
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Melt Value</h3>
             <p>
               This is the raw value of the gold based on purity and current gold price. 
@@ -31,7 +31,7 @@ const BuyingGuidePage = () => {
             </p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Purity</h3>
             <p>
               How much actual gold is in a piece of jewelry or scrap item, measured in karats. 
@@ -42,12 +42,12 @@ const BuyingGuidePage = () => {
             </p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Weight</h3>
             <p>Measured in grams</p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Seller Feedback</h3>
             <p>
               How many transactions a seller has completed and how satisfied buyers have been. 
@@ -58,7 +58,7 @@ const BuyingGuidePage = () => {
             </p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Top Rated</h3>
             <p>
               A Top Rated badge on eBay means the seller has met strict performance standards over time, 
@@ -68,14 +68,14 @@ const BuyingGuidePage = () => {
             </p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Returns</h3>
             <p>
               We <span className="warning-highlight">highly recommend</span> you purchase only from listings with returns accepted.
             </p>
           </div>
 
-          <div className="detail-item">
+          <div className="guide-detail-item">
             <h3>Scam Risk</h3>
             <p>
               Score from 1 to 10 that assess how risky a gold listing might be. It's calculated using an AI model 
