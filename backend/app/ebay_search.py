@@ -9,11 +9,11 @@ import re # for regex operations
 import time # for sleep between requests
 from urllib.parse import quote  # Import the quote function for URL encoding
 from psycopg2.extras import Json  # For handling JSON data
-from database import connect_to_db, insert_data 
-from zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
-from extract_metadata import extract_metadata # Import the metadata extraction function
-from calculate_profit import update_profit_column # Import the profit calculation function
-from scam_risk_score import update_scam_risk_score_column # Import the scam risk score function
+from app.database import connect_to_db, insert_data 
+from app.zero_shot_classifier import update_gold_column # Import the zero-shot classifier function
+from app.extract_metadata import extract_metadata # Import the metadata extraction function
+from app.calculate_profit import update_profit_column # Import the profit calculation function
+from app.scam_risk_score import update_scam_risk_score_column # Import the scam risk score function
 
 load_dotenv(override=True) # Load environment variables from .env file
 
