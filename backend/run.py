@@ -33,6 +33,16 @@ def main():
     pipeline_start = datetime.now()
     print(f"🚀 Starting eBay Gold Scraper Pipeline at {pipeline_start.strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
+
+    # Define multiple search keywords
+    SEARCH_KEYWORDS_LIST = [
+        'scrap gold 14k',
+        'scrap gold 10k', 
+        'scrap gold 18k',
+        'gold jewelry scrap',
+        'broken gold jewelry',
+        'gold estate jewelry'
+    ]
     
     # Step 1: Database Setup
     step_start = log_step("Database connection and setup")
@@ -71,67 +81,72 @@ def main():
         filter_string = ",".join(search_filters) if search_filters else None
 
         all_item_data = []
-        total_fetched = 0
-        page_number = 1
-        items_processed = 0
-        max_items = 200  # Limit for testing, remove or increase for production
+        max_items_per_keyword = 5  # Limit per keyword
 
-        while page_number <= MAX_PAGES and items_processed < max_items:
-            print(f"  📄 Processing page {page_number}...")
+        for keyword_index, search_keyword in enumerate(SEARCH_KEYWORDS_LIST):
+            print(f"\n  🔍 Keyword {keyword_index + 1}/{len(SEARCH_KEYWORDS_LIST)}: '{search_keyword}'")
             
-            item_summaries, total_listings = search_ebay_listings(
-                access_token=access_token,
-                search_query=SEARCH_KEYWORDS,
-                category_ids=None,
-                limit=RESULTS_PER_PAGE,
-                marketplace_id=MARKETPLACE_ID,
-                filter_str=filter_string
-            )
+            page_number = 1
+            items_for_this_keyword = 0
+            
+            while page_number <= MAX_PAGES and items_for_this_keyword < max_items_per_keyword:
+                print(f"    📄 Processing page {page_number} for '{search_keyword}'...")
+                
+                item_summaries, total_listings = search_ebay_listings(
+                    access_token=access_token,
+                    search_query=search_keyword,
+                    category_ids=None,
+                    limit=RESULTS_PER_PAGE,
+                    marketplace_id=MARKETPLACE_ID,
+                    filter_str=filter_string
+                )
 
-            if total_listings == 0 or not item_summaries:
-                print("  ℹ️ No more listings found.")
-                break
-
-            for summary in item_summaries:
-                if items_processed >= max_items:
+                if total_listings == 0 or not item_summaries:
+                    print(f"    ℹ️ No more listings found for '{search_keyword}'")
                     break
+
+                for summary in item_summaries:
+                    if items_for_this_keyword >= max_items_per_keyword:
+                        break
+                        
+                    item_id = summary.get('itemId')
                     
-                seller_info = summary.get('seller', {})
-                item_id = summary.get('itemId')
-                item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
-                
-                if item_details:  # Only add if we got details successfully
-                    all_item_data.append({
-                        'item_id': summary.get('itemId'),
-                        'title': summary.get('title'),
-                        'price': summary.get('price', {}).get('value'),
-                        'currency': summary.get('price', {}).get('currency'),
-                        'seller_username': seller_info.get('username'),
-                        'seller_feedback_score': seller_info.get('feedbackScore'),
-                        'feedback_percent': seller_info.get('feedbackPercentage'),
-                        'image_url': summary.get('image', {}).get('imageUrl'),
-                        'item_url': summary.get('itemWebUrl'),
-                        'shipping_options': summary.get('shippingOptions', None),
-                        'top_rated_buying_experience': summary.get('topRatedBuyingExperience'),
-                        'description': item_details.get('description', None),
-                        'returns_accepted': item_details.get('returns_accepted', None),
-                        'metal': item_details.get('metal', None),
-                        'total_carat_weight': item_details.get('total_carat_weight', None),
-                        'metal_purity': item_details.get('metal_purity', None),
-                        'item_specifics': item_details.get('item_specifics', {}),
-                    })
-                
-                items_processed += 1
-                if items_processed % 50 == 0:
-                    print(f"    📊 Processed {items_processed} items...")
+                    # Skip duplicates
+                    if any(item['item_id'] == item_id for item in all_item_data):
+                        continue
+                    
+                    seller_info = summary.get('seller', {})
+                    item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
+                    
+                    if item_details:
+                        all_item_data.append({
+                            'item_id': item_id,
+                            'title': summary.get('title'),
+                            'price': summary.get('price', {}).get('value'),
+                            'currency': summary.get('price', {}).get('currency'),
+                            'seller_username': seller_info.get('username'),
+                            'seller_feedback_score': seller_info.get('feedbackScore'),
+                            'feedback_percent': seller_info.get('feedbackPercentage'),
+                            'image_url': summary.get('image', {}).get('imageUrl'),
+                            'item_url': summary.get('itemWebUrl'),
+                            'shipping_options': summary.get('shippingOptions', None),
+                            'top_rated_buying_experience': summary.get('topRatedBuyingExperience'),
+                            'description': item_details.get('description', None),
+                            'returns_accepted': item_details.get('returns_accepted', None),
+                            'metal': item_details.get('metal', None),
+                            'total_carat_weight': item_details.get('total_carat_weight', None),
+                            'metal_purity': item_details.get('metal_purity', None),
+                            'item_specifics': item_details.get('item_specifics', {}),
+                            'search_keyword': search_keyword  # Track source keyword
+                        })
+                        items_for_this_keyword += 1
 
-            total_fetched += len(item_summaries)
-            if total_fetched >= total_listings or page_number >= MAX_PAGES:
-                break
-            page_number += 1
+                page_number += 1
+            
+            print(f"    ✅ Found {items_for_this_keyword} items for '{search_keyword}'")
 
-        print(f"  📊 Total items scraped: {len(all_item_data)}")
-        log_step("eBay listings scraping", step_start)
+        print(f"  📊 Total unique items scraped: {len(all_item_data)}")
+        log_step("eBay listings scraping (multiple keywords)", step_start)
     except Exception as e:
         print(f"❌ eBay scraping failed: {e}")
         conn.close()

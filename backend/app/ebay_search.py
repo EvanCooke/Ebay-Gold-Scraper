@@ -32,7 +32,14 @@ SEARCH_API_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 ITEM_DETAILS_BASE_URL = "https://api.ebay.com/buy/browse/v1/item/"  
 
 
-SEARCH_KEYWORDS = 'scrap gold 14k' 
+SEARCH_KEYWORDS = [
+    'scrap gold 14k',
+    'scrap gold 10k', 
+    'scrap gold 18k',
+    'gold jewelry scrap',
+    'broken gold jewelry',
+    'gold estate jewelry'
+] 
 MARKETPLACE_ID = 'EBAY_US' 
 RESULTS_PER_PAGE = 100
 MAX_PAGES = 20
@@ -283,70 +290,86 @@ if __name__ == "__main__":
     FILTER_STRING = ",".join(search_filters) if search_filters else None
 
     all_item_data = []
-    total_fetched = 0
-    page_number = 1
 
-    # Add a flag to stop after one item
-    stop_after_one_item = 0
+    # Loop through each search keyword
+    for keyword_index, search_keyword in enumerate(SEARCH_KEYWORDS):
+        print(f"\n{'='*60}")
+        print(f"Processing keyword {keyword_index + 1}/{len(SEARCH_KEYWORDS)}: '{search_keyword}'")
+        print(f"{'='*60}")
+        
+        total_fetched = 0
+        page_number = 1
+        stop_after_items = 5  # Limit per keyword
 
-    while page_number <= MAX_PAGES:
-        item_summaries, total_listings = search_ebay_listings(
-            access_token=access_token,
-            search_query=SEARCH_KEYWORDS,
-            category_ids=CATEGORY_IDS,
-            limit=RESULTS_PER_PAGE,
-            marketplace_id=MARKETPLACE_ID,
-            filter_str=FILTER_STRING
-            # You can add a sort order here if needed, e.g., sort_order='PricePlusShippingLowest'
-        )
+        while page_number <= MAX_PAGES:
+            item_summaries, total_listings = search_ebay_listings(
+                access_token=access_token,
+                search_query=search_keyword,  # Use current keyword
+                category_ids=CATEGORY_IDS,
+                limit=RESULTS_PER_PAGE,
+                marketplace_id=MARKETPLACE_ID,
+                filter_str=FILTER_STRING
+            )
 
-        # Add the snippet here to exit the loop if no listings are found
-        if total_listings == 0 or not item_summaries:
-            print("No more listings found. Exiting pagination loop.")
-            break
-
-        for summary in item_summaries:
-            seller_info = summary.get('seller', {})
-            item_id = summary.get('itemId')
-            item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
-            
-            all_item_data.append({
-                'item_id': summary.get('itemId'),
-                'title': summary.get('title'),
-                'price': summary.get('price', {}).get('value'),
-                'currency': summary.get('price', {}).get('currency'),
-                'seller_username': seller_info.get('username'),
-                'seller_feedback_score': seller_info.get('feedbackScore'),
-                'feedback_percent': seller_info.get('feedbackPercentage'),
-                'image_url': summary.get('image', {}).get('imageUrl'),
-                'item_url': summary.get('itemWebUrl'),
-                'shipping_options': summary.get('shippingOptions', None),
-                'top_rated_buying_experience': summary.get('topRatedBuyingExperience'),
-                'description': item_details.get('description', None),
-                'returns_accepted': item_details.get('returns_accepted', None),
-                'metal': item_details.get('metal', None),
-                'total_carat_weight': item_details.get('total_carat_weight', None),
-                'metal_purity': item_details.get('metal_purity', None),
-                'item_specifics': item_details.get('item_specifics', {}),  # Store as JSON string for CSV'
-            })
-            stop_after_one_item += 1
-            # Stop after processing one item
-            if stop_after_one_item >= 200:
-                print("Stopping after processing 20 items for testing.")
+            if total_listings == 0 or not item_summaries:
+                print(f"No more listings found for '{search_keyword}'. Moving to next keyword.")
                 break
 
-            # time.sleep(0.5)  # Be mindful of rate limits
+            items_processed_this_keyword = 0
+            for summary in item_summaries:
+                if len(all_item_data) >= stop_after_items:
+                    break
+                    
+                seller_info = summary.get('seller', {})
+                item_id = summary.get('itemId')
+                
+                # Skip if we already have this item (avoid duplicates across keywords)
+                if any(item['item_id'] == item_id for item in all_item_data):
+                    print(f"  Skipping duplicate item: {item_id}")
+                    continue
+                
+                item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
+                
+                if item_details:  # Only add if we got details successfully
+                    all_item_data.append({
+                        'item_id': summary.get('itemId'),
+                        'title': summary.get('title'),
+                        'price': summary.get('price', {}).get('value'),
+                        'currency': summary.get('price', {}).get('currency'),
+                        'seller_username': seller_info.get('username'),
+                        'seller_feedback_score': seller_info.get('feedbackScore'),
+                        'feedback_percent': seller_info.get('feedbackPercentage'),
+                        'image_url': summary.get('image', {}).get('imageUrl'),
+                        'item_url': summary.get('itemWebUrl'),
+                        'shipping_options': summary.get('shippingOptions', None),
+                        'top_rated_buying_experience': summary.get('topRatedBuyingExperience'),
+                        'description': item_details.get('description', None),
+                        'returns_accepted': item_details.get('returns_accepted', None),
+                        'metal': item_details.get('metal', None),
+                        'total_carat_weight': item_details.get('total_carat_weight', None),
+                        'metal_purity': item_details.get('metal_purity', None),
+                        'item_specifics': item_details.get('item_specifics', {}),
+                        'search_keyword': search_keyword  # Track which keyword found this item
+                    })
+                    items_processed_this_keyword += 1
 
-        
-        # Break the outer loop if testing with one item
-        if stop_after_one_item >= 200:
-            break
+            print(f"  Found {items_processed_this_keyword} new items for '{search_keyword}' on page {page_number}")
+            
+            # Break if we've hit our limit
+            if len(all_item_data) >= stop_after_items:
+                print(f"Reached limit of {stop_after_items} items. Stopping search.")
+                break
 
-        total_fetched += len(item_summaries)
-        if total_fetched >= total_listings or page_number >= MAX_PAGES:
-            break
-        page_number += 1
-        print(f"Moving to page {page_number}...")
+            total_fetched += len(item_summaries)
+            if total_fetched >= total_listings or page_number >= MAX_PAGES:
+                break
+            page_number += 1
+
+        print(f"Completed '{search_keyword}': {items_processed_this_keyword} items found")
+
+    print(f"\n{'='*60}")
+    print(f"TOTAL UNIQUE ITEMS FOUND: {len(all_item_data)}")
+    print(f"{'='*60}")
 
     # --- Write to CSV ---
     # if all_item_data:
