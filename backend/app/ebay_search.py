@@ -120,7 +120,7 @@ def get_access_token(client_id, client_secret, target_endpoint):
     
 
 # --- Function to Search eBay Listings ---
-def search_ebay_listings(access_token, search_query, category_ids, limit, marketplace_id, filter_str=None, sort_order=None, returns_accepted=None):
+def search_ebay_listings(access_token, search_query, category_ids, limit, marketplace_id, filter_str=None, sort_order=None, returns_accepted=None, offset=0):
     """
     Searches eBay listings using the /item_summary/search endpoint.
     See: https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search
@@ -139,7 +139,8 @@ def search_ebay_listings(access_token, search_query, category_ids, limit, market
     }
     params = {
         'q': search_query,
-        'limit': limit
+        'limit': limit,
+        'offset': offset  # Add offset parameter for pagination
     }
     if filter_str:
         params['filter'] = filter_str

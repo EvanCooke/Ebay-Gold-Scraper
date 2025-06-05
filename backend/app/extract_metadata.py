@@ -49,6 +49,8 @@ nlp = spacy.load("en_core_web_sm")
 # Normalizes weight to grams.
 def normalize_weight(weight_str):
     try:
+        if weight_str is None:
+            return None
         weight_str = weight_str.lower()
         if "oz" in weight_str or "ounce" in weight_str:
             return float(weight_str.split()[0]) * 28.3495  # Convert ounces to grams
@@ -61,9 +63,18 @@ def normalize_weight(weight_str):
 # Normalizes purity to karats.
 def normalize_purity(purity_str):
     try:
+        if purity_str is None:
+            return None
         # Remove non-numeric characters
         purity_str = ''.join(filter(str.isdigit, purity_str))
-        return int(purity_str)
+        purity_value = int(purity_str)
+
+        # Validate purity range (gold purity should be between 1-24 karats)
+        if purity_value < 1 or purity_value > 24:
+            print(f"Warning: Invalid purity value {purity_value}. Skipping.")
+            return None
+            
+        return purity_value
     except (ValueError, AttributeError):
         return None
 
@@ -143,53 +154,65 @@ def extract_with_spacy(text):
     return {"weight": weight, "purity": purity}
 
 def extract_metadata(conn):
-    # 1
-        # Prioritize structured data from item_specifics (e.g., "Total Carat Weight", "Metal Purity", "Metal").
-        # Normalize values (e.g., strip units like "carats" or "grams", convert to floats).
-        # Fallback to Unstructured Data:
-
     cursor = conn.cursor()
-    query = """
+    successful_updates = 0
+    failed_updates = 0
+    
+    try:
+        # Fetch rows where metadata hasn't been extracted yet
+        query = """
         SELECT item_id, title, description, metal, total_carat_weight, metal_purity
         FROM ebay_listings
-        WHERE is_gold = TRUE;
-    """    
-    cursor.execute(query)
-    rows = cursor.fetchall()
+        WHERE is_gold = TRUE
+            AND (weight IS NULL OR purity IS NULL);
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        for row in rows:
+            try:
+                # Extract from item_specifics first
+                item_specifics_data = extract_from_item_specifics(row)
+                
+                # If missing, try text blob extraction
+                text_blob_data = extract_from_text_blob(row)
+                
+                # Combine results (prioritize item_specifics)
+                weight = item_specifics_data.get("weight") or text_blob_data.get("weight")
+                purity = item_specifics_data.get("purity") or text_blob_data.get("purity")
 
-    for row in rows:
-        # Extract metadata from item specifics and text blob
-        item_specifics_data = extract_from_item_specifics(row)
-        print("item_specifics_data: "+ str(item_specifics_data))
-        text_blob_data = extract_from_text_blob(row)
-        print("text_blob_data: "+ str(text_blob_data))
+                print(f"Item {row[0]} - weight: {weight} purity: {purity}")
 
-        # Merge structured and regex-based data
-        weight = item_specifics_data.get("weight") or text_blob_data.get("weight")
-        purity = item_specifics_data.get("purity") or text_blob_data.get("purity")
+                # Use spaCy as a fallback if weight or purity is still missing
+                if not weight or not purity:
+                    spacy_data = extract_with_spacy(f"{row[1]} {row[2]}")
+                    print("spacy_data: " + str(spacy_data))
+                    weight = weight or normalize_weight(spacy_data.get("weight"))
+                    purity = purity or normalize_purity(spacy_data.get("purity"))
 
-        print(f"weight: {weight} purity: {purity}")
+                # Update the database if both weight and purity are found and valid
+                if weight and purity and weight > 0 and 0 < purity <= 24:
+                    update_query = """
+                        UPDATE ebay_listings
+                        SET weight = %s, purity = %s
+                        WHERE item_id = %s;
+                    """
+                    cursor.execute(update_query, (weight, purity, row[0]))
+                    successful_updates += 1
+                else:
+                    print(f"Skipped row {row[0]}: Missing or invalid weight ({weight}) or purity ({purity})")
+                    failed_updates += 1
+                    
+            except Exception as e:
+                print(f"Error processing metadata for item {row[0]}: {e}")
+                failed_updates += 1
+                continue  # Continue with next item
 
-        # Use spaCy as a fallback if weight or purity is still missing
-        if not weight or not purity:
-            spacy_data = extract_with_spacy(f"{row[1]} {row[2]}")
-            print("spacy_data: " + str(spacy_data))
-            weight = weight or normalize_weight(spacy_data.get("weight"))
-            purity = purity or normalize_purity(spacy_data.get("purity"))
-
-        # Update the database if both weight and purity are found
-        if weight and purity:
-   
-            update_query = """
-                UPDATE ebay_listings
-                SET weight = %s, purity = %s
-                WHERE item_id = %s;
-            """
-            cursor.execute(update_query, (weight, purity, row[0]))
-        else:
-            print(f"Skipped row {row[0]}: Missing weight or purity.")
-            
-
-    conn.commit()
-    print("Updated 'weight' and 'purity' columns for all rows in the ebay_listings table.")
-
+        conn.commit()
+        print(f"Metadata extraction complete: {successful_updates} successful, {failed_updates} failed")
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Error in extract_metadata: {e}")
+    finally:
+        cursor.close()

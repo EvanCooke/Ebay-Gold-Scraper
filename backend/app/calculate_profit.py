@@ -76,15 +76,31 @@ def get_gold_price_per_gram():
         return None
 
 def calculate_profit(row, current_gold_price):
-    price, weight, purity = float(row[1]), row[2], row[3]
+    try:
+        price, weight, purity = float(row[1]), row[2], row[3]
+        
+        # Validate inputs
+        if price <= 0 or weight <= 0 or purity <= 0 or purity > 24:
+            print(f"Warning: Invalid values for item {row[0]} - price: {price}, weight: {weight}, purity: {purity}")
+            return None, None
+        
+        melt_value = (purity / 24) * weight * current_gold_price
+        profit = melt_value - price
+        
+        # Check for reasonable values (prevent overflow)
+        if melt_value > 1000000 or profit > 1000000:  # Reasonable upper limits
+            print(f"Warning: Unrealistic melt value or profit for item {row[0]}")
+            return None, None
 
-    melt_value = (purity / 24) * weight * current_gold_price
-    profit = melt_value - price
-
-    return round(melt_value, 2), round(profit, 2)
+        return round(melt_value, 2), round(profit, 2)
+    except (ValueError, TypeError, ZeroDivisionError) as e:
+        print(f"Error calculating profit for item {row[0]}: {e}")
+        return None, None
 
 def update_profit_column(conn):
     cursor = conn.cursor()
+    successful_updates = 0
+    failed_updates = 0
 
     try:
         # Fetch all rows from the ebay_listings table
@@ -105,19 +121,29 @@ def update_profit_column(conn):
 
         # Calculate profit for each row and update the 'profit' column
         for row in rows:
-            # Calculate melt value and profit
-            melt_value, profit = calculate_profit(row, current_gold_price)
-
-            # Update the 'profit' and 'melt_value' columns for the current row
-            update_query = """
-                UPDATE ebay_listings
-                SET profit = %s, melt_value = %s
-                WHERE item_id = %s;
-            """
-            cursor.execute(update_query, (profit, melt_value, row[0]))
+            try:
+                # Calculate melt value and profit
+                melt_value, profit = calculate_profit(row, current_gold_price)
+                
+                if melt_value is not None and profit is not None:
+                    # Update the 'profit' and 'melt_value' columns for the current row
+                    update_query = """
+                        UPDATE ebay_listings
+                        SET profit = %s, melt_value = %s
+                        WHERE item_id = %s;
+                    """
+                    cursor.execute(update_query, (profit, melt_value, row[0]))
+                    successful_updates += 1
+                else:
+                    print(f"Skipping profit update for item {row[0]} due to invalid calculations")
+                    failed_updates += 1
+            except Exception as e:
+                print(f"Error processing item {row[0]}: {e}")
+                failed_updates += 1
+                continue  # Continue with next item
 
         conn.commit()
-        print("Updated 'profit' column for all rows in the ebay_listings table.")
+        print(f"Updated 'profit' column: {successful_updates} successful, {failed_updates} failed")
 
     except Exception as e:
         conn.rollback()

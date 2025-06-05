@@ -81,7 +81,7 @@ def main():
         filter_string = ",".join(search_filters) if search_filters else None
 
         all_item_data = []
-        max_items_per_keyword = 5  # Limit per keyword
+        max_items_per_keyword = 20  # Limit per keyword
 
         for keyword_index, search_keyword in enumerate(SEARCH_KEYWORDS_LIST):
             print(f"\n  🔍 Keyword {keyword_index + 1}/{len(SEARCH_KEYWORDS_LIST)}: '{search_keyword}'")
@@ -92,13 +92,17 @@ def main():
             while page_number <= MAX_PAGES and items_for_this_keyword < max_items_per_keyword:
                 print(f"    📄 Processing page {page_number} for '{search_keyword}'...")
                 
+                # Calculate offset for pagination
+                offset = (page_number - 1) * RESULTS_PER_PAGE
+
                 item_summaries, total_listings = search_ebay_listings(
                     access_token=access_token,
                     search_query=search_keyword,
                     category_ids=None,
                     limit=RESULTS_PER_PAGE,
                     marketplace_id=MARKETPLACE_ID,
-                    filter_str=filter_string
+                    filter_str=filter_string,
+                    offset=offset  # Pass the calculated offset
                 )
 
                 if total_listings == 0 or not item_summaries:
