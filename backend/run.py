@@ -52,7 +52,7 @@ def main():
         if not conn:
             raise Exception("Failed to connect to database")
         
-        # create_tables(conn)  # Ensure tables exist
+        create_tables(conn)  # Ensure tables exist
         clear_tables(conn)   # Clear existing data
         log_step("Database setup", step_start)
     except Exception as e:
@@ -71,7 +71,7 @@ def main():
         conn.close()
         return False
 
-    # Step 3: Scrape eBay Listings
+    # Step 3: Scrape eBay Listings with Batch Processing
     step_start = log_step("eBay listings scraping")
     try:
         # Construct search filters
@@ -80,8 +80,11 @@ def main():
             search_filters.append(f"feedbackScoreMin:[{SELLER_FEEDBACK_MIN}]")
         filter_string = ",".join(search_filters) if search_filters else None
 
-        all_item_data = []
-        max_items_per_keyword = 20  # Limit per keyword
+        # Batch processing configuration
+        BATCH_SIZE = 100
+        batch_items = []
+        total_items_processed = 0
+        max_items_per_keyword = 1000  # Increased for large-scale scraping
 
         for keyword_index, search_keyword in enumerate(SEARCH_KEYWORDS_LIST):
             print(f"\n  🔍 Keyword {keyword_index + 1}/{len(SEARCH_KEYWORDS_LIST)}: '{search_keyword}'")
@@ -102,28 +105,34 @@ def main():
                     limit=RESULTS_PER_PAGE,
                     marketplace_id=MARKETPLACE_ID,
                     filter_str=filter_string,
-                    offset=offset  # Pass the calculated offset
+                    offset=offset
                 )
 
                 if total_listings == 0 or not item_summaries:
                     print(f"    ℹ️ No more listings found for '{search_keyword}'")
                     break
 
+                items_processed_this_page = 0
                 for summary in item_summaries:
                     if items_for_this_keyword >= max_items_per_keyword:
                         break
                         
                     item_id = summary.get('itemId')
                     
-                    # Skip duplicates
-                    if any(item['item_id'] == item_id for item in all_item_data):
+                    # Check for duplicates in database instead of memory
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM ebay_listings WHERE item_id = %s", (item_id,))
+                    if cursor.fetchone()[0] > 0:
+                        print(f"      ⏭️ Skipping duplicate item: {item_id}")
+                        cursor.close()
                         continue
+                    cursor.close()
                     
                     seller_info = summary.get('seller', {})
                     item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
                     
                     if item_details:
-                        all_item_data.append({
+                        item_data = {
                             'item_id': item_id,
                             'title': summary.get('title'),
                             'price': summary.get('price', {}).get('value'),
@@ -141,37 +150,46 @@ def main():
                             'total_carat_weight': item_details.get('total_carat_weight', None),
                             'metal_purity': item_details.get('metal_purity', None),
                             'item_specifics': item_details.get('item_specifics', {}),
-                            'search_keyword': search_keyword  # Track source keyword
-                        })
+                            'search_keyword': search_keyword
+                        }
+                        
+                        batch_items.append(item_data)
+                        items_processed_this_page += 1
                         items_for_this_keyword += 1
+                        total_items_processed += 1
 
+                        # Process batch when it reaches BATCH_SIZE
+                        if len(batch_items) >= BATCH_SIZE:
+                            print(f"      📦 Processing batch of {len(batch_items)} items...")
+                            successful_inserts = 0
+                            for item in batch_items:
+                                if insert_data(conn, "ebay_listings", item):
+                                    successful_inserts += 1
+                            print(f"      ✅ Successfully inserted {successful_inserts}/{len(batch_items)} items")
+                            batch_items = []  # Clear the batch
+
+                print(f"    📊 Found {items_processed_this_page} new items for '{search_keyword}' on page {page_number}")
                 page_number += 1
             
-            print(f"    ✅ Found {items_for_this_keyword} items for '{search_keyword}'")
+            print(f"    ✅ Completed '{search_keyword}': {items_for_this_keyword} items processed")
 
-        print(f"  📊 Total unique items scraped: {len(all_item_data)}")
+        # Process any remaining items in the final batch
+        if batch_items:
+            print(f"\n  📦 Processing final batch of {len(batch_items)} items...")
+            successful_inserts = 0
+            for item in batch_items:
+                if insert_data(conn, "ebay_listings", item):
+                    successful_inserts += 1
+            print(f"  ✅ Successfully inserted {successful_inserts}/{len(batch_items)} items")
+
+        print(f"  📊 Total items processed: {total_items_processed}")
         log_step("eBay listings scraping (multiple keywords)", step_start)
     except Exception as e:
         print(f"❌ eBay scraping failed: {e}")
         conn.close()
         return False
 
-    # Step 4: Insert Raw Data
-    step_start = log_step("Database insertion")
-    try:
-        successful_inserts = 0
-        for item in all_item_data:
-            if insert_data(conn, "ebay_listings", item):
-                successful_inserts += 1
-        
-        print(f"  📊 Successfully inserted {successful_inserts}/{len(all_item_data)} items")
-        log_step("Database insertion", step_start)
-    except Exception as e:
-        print(f"❌ Database insertion failed: {e}")
-        conn.close()
-        return False
-
-    # Step 5: Gold Classification
+    # Step 4: Gold Classification
     step_start = log_step("Gold classification (AI)")
     try:
         update_gold_column(conn)
@@ -181,7 +199,7 @@ def main():
         conn.close()
         return False
 
-    # Step 6: Metadata Extraction
+    # Step 5: Metadata Extraction
     step_start = log_step("Metadata extraction")
     try:
         extract_metadata(conn)
@@ -191,7 +209,7 @@ def main():
         conn.close()
         return False
 
-    # Step 7: Profit Calculation
+    # Step 6: Profit Calculation
     step_start = log_step("Profit calculation")
     try:
         update_profit_column(conn)
@@ -201,7 +219,7 @@ def main():
         conn.close()
         return False
 
-    # Step 8: Scam Risk Assessment
+    # Step 7: Scam Risk Assessment
     step_start = log_step("Scam risk assessment (AI)")
     try:
         update_scam_risk_score_column(conn)
@@ -220,7 +238,7 @@ def main():
     print("=" * 60)
     print(f"🎉 Pipeline completed successfully!")
     print(f"⏱️  Total duration: {total_duration.total_seconds():.2f} seconds")
-    print(f"📊 Final stats: {len(all_item_data)} items processed")
+    print(f"📊 Final stats: {total_items_processed} items processed")
     print(f"🕐 Finished at: {pipeline_end.strftime('%Y-%m-%d %H:%M:%S')}")
     
     return True

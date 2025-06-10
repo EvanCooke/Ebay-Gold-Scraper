@@ -1,0 +1,16 @@
+# /etc/systemd/system/meltwise-backend.service
+[Unit]
+Description=MeltWise Flask Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Ebay-Gold-Scraper/backend
+Environment=PATH=/root/Ebay-Gold-Scraper/production_env/bin
+ExecStart=/root/Ebay-Gold-Scraper/production_env/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 120 run_server:app
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

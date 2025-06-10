@@ -1,0 +1,5 @@
+sudo systemctl stop meltwise-backend
+sudo systemctl daemon-reload
+sudo systemctl enable meltwise-backend
+sudo systemctl start meltwise-backend
+sudo systemctl status meltwise-backend

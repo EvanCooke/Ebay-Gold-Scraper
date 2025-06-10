@@ -290,7 +290,15 @@ if __name__ == "__main__":
         search_filters.append(f"feedbackScoreMin:[{SELLER_FEEDBACK_MIN}]")
     FILTER_STRING = ",".join(search_filters) if search_filters else None
 
-    all_item_data = []
+    # Establish a connection to the database
+    conn = connect_to_db()
+    if not conn:
+        exit("Failed to connect to the database. Exiting.")
+
+    # Batch processing configuration
+    BATCH_SIZE = 100
+    batch_items = []
+    total_items_processed = 0
 
     # Loop through each search keyword
     for keyword_index, search_keyword in enumerate(SEARCH_KEYWORDS):
@@ -300,16 +308,20 @@ if __name__ == "__main__":
         
         total_fetched = 0
         page_number = 1
-        stop_after_items = 5  # Limit per keyword
+        items_per_keyword = 5  # Limit per keyword
 
         while page_number <= MAX_PAGES:
+            # Calculate offset for pagination
+            offset = (page_number - 1) * RESULTS_PER_PAGE
+
             item_summaries, total_listings = search_ebay_listings(
                 access_token=access_token,
                 search_query=search_keyword,  # Use current keyword
                 category_ids=CATEGORY_IDS,
                 limit=RESULTS_PER_PAGE,
                 marketplace_id=MARKETPLACE_ID,
-                filter_str=FILTER_STRING
+                filter_str=FILTER_STRING,
+                offset=offset  # Pass offset for pagination
             )
 
             if total_listings == 0 or not item_summaries:
@@ -318,21 +330,30 @@ if __name__ == "__main__":
 
             items_processed_this_keyword = 0
             for summary in item_summaries:
-                if len(all_item_data) >= stop_after_items:
+                if total_items_processed >= items_per_keyword:
                     break
                     
                 seller_info = summary.get('seller', {})
                 item_id = summary.get('itemId')
                 
-                # Skip if we already have this item (avoid duplicates across keywords)
-                if any(item['item_id'] == item_id for item in all_item_data):
+                # # Skip if we already have this item (avoid duplicates across keywords)
+                # if any(item['item_id'] == item_id for item in all_item_data):
+                #     print(f"  Skipping duplicate item: {item_id}")
+                #     continue
+
+                # Check for duplicates in database instead of memory
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM ebay_listings WHERE item_id = %s", (item_id,))
+                if cursor.fetchone()[0] > 0:
                     print(f"  Skipping duplicate item: {item_id}")
+                    cursor.close()
                     continue
+                cursor.close()
                 
                 item_details = get_item_details(access_token, item_id, MARKETPLACE_ID)
                 
                 if item_details:  # Only add if we got details successfully
-                    all_item_data.append({
+                    item_data = {
                         'item_id': summary.get('itemId'),
                         'title': summary.get('title'),
                         'price': summary.get('price', {}).get('value'),
@@ -351,14 +372,27 @@ if __name__ == "__main__":
                         'metal_purity': item_details.get('metal_purity', None),
                         'item_specifics': item_details.get('item_specifics', {}),
                         'search_keyword': search_keyword  # Track which keyword found this item
-                    })
-                    items_processed_this_keyword += 1
+                    }
 
-            print(f"  Found {items_processed_this_keyword} new items for '{search_keyword}' on page {page_number}")
+                    batch_items.append(item_data)
+                    items_processed_this_page += 1
+                    total_items_processed += 1
+
+                    # Process batch when it reaches BATCH_SIZE
+                    if len(batch_items) >= BATCH_SIZE:
+                        print(f"  Processing batch of {len(batch_items)} items...")
+                        successful_inserts = 0
+                        for item in batch_items:
+                            if insert_data(conn, "ebay_listings", item):
+                                successful_inserts += 1
+                        print(f"  Successfully inserted {successful_inserts}/{len(batch_items)} items")
+                        batch_items = []  # Clear the batch
+
+            print(f"  Found {items_processed_this_page} new items for '{search_keyword}' on page {page_number}")
             
-            # Break if we've hit our limit
-            if len(all_item_data) >= stop_after_items:
-                print(f"Reached limit of {stop_after_items} items. Stopping search.")
+            # Break if we've hit our limit for this keyword
+            if total_items_processed >= items_per_keyword:
+                print(f"Reached limit of {items_per_keyword} items for '{search_keyword}'.")
                 break
 
             total_fetched += len(item_summaries)
@@ -366,40 +400,32 @@ if __name__ == "__main__":
                 break
             page_number += 1
 
-        print(f"Completed '{search_keyword}': {items_processed_this_keyword} items found")
+        print(f"Completed '{search_keyword}': processed items up to {total_items_processed}")
+
+    # Process any remaining items in the final batch
+    if batch_items:
+        print(f"\nProcessing final batch of {len(batch_items)} items...")
+        successful_inserts = 0
+        for item in batch_items:
+            if insert_data(conn, "ebay_listings", item):
+                successful_inserts += 1
+        print(f"Successfully inserted {successful_inserts}/{len(batch_items)} items")
 
     print(f"\n{'='*60}")
-    print(f"TOTAL UNIQUE ITEMS FOUND: {len(all_item_data)}")
+    print(f"TOTAL UNIQUE ITEMS FOUND: {total_items_processed}")
     print(f"{'='*60}")
 
-    # --- Write to CSV ---
+    # # --- Insert data into PostgreSQL database ---
     # if all_item_data:
-    #     print(f"\nWriting {len(all_item_data)} items to {OUTPUT_CSV_FILENAME}...")
-    #     with open(OUTPUT_CSV_FILENAME, 'w', newline='', encoding='utf-8') as csvfile:
-    #         fieldnames = ['item_id', 'title', 'price', 'currency', 'seller_username', 'seller_feedback_score', 'feedback_percent', 'image_url', 'item_url', 'shipping_options', 'top_rated_buying_experience', 'description', 'returns_accepted', 'item_specifics']
-    #         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    #         writer.writeheader()
-    #         writer.writerows(all_item_data)
-    #     print("Data written to CSV file.")
+    #     print(f"\nInserting {len(all_item_data)} items into the database...")
+    #     for item in all_item_data:
+    #         success = insert_data(conn, "ebay_listings", item)
+    #         if success:
+    #             print(f"Inserted item {item['item_id']} successfully.")
+    #         else:
+    #             print(f"Failed to insert item {item['item_id']}.")
     # else:
-    #     print("No data fetched to write to CSV.")
-
-    # Establish a connection to the database
-    conn = connect_to_db()
-    if not conn:
-        exit("Failed to connect to the database. Exiting.")
-
-    # --- Insert data into PostgreSQL database ---
-    if all_item_data:
-        print(f"\nInserting {len(all_item_data)} items into the database...")
-        for item in all_item_data:
-            success = insert_data(conn, "ebay_listings", item)
-            if success:
-                print(f"Inserted item {item['item_id']} successfully.")
-            else:
-                print(f"Failed to insert item {item['item_id']}.")
-    else:
-        print("No data fetched to insert into the database.")
+    #     print("No data fetched to insert into the database.")
 
     print("updating gold column...")
     # Update the 'gold' column using the zero-shot classifier

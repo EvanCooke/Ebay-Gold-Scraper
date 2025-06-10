@@ -3,7 +3,7 @@ import re
 
 
 # Load the zero-shot classification pipeline
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+classifier = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli")
 
 # # consider using the 'metal' field in the ebay api response to filter out non-gold items as well
 def classify_listing(row):
